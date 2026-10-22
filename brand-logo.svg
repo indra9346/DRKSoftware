@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Fit Crush">
+  <rect width="512" height="512" rx="112" fill="#8F1838"/>
+  <path d="M332 86c-8 68-42 117-100 148-44 23-78 54-87 105-5 29 2 52 16 72-34-8-58-34-62-70-6-53 27-96 77-124 54-31 86-67 96-125 5-30-1-54-14-75 34 7 61 32 74 69Z" fill="#fff"/>
+  <path d="M309 82c43 11 75 41 87 83-27-16-55-22-83-17l-34-23c12-18 22-31 30-43Z" fill="#F3DDE3"/>
+  <circle cx="351" cy="105" r="7" fill="#8F1838"/>
+  <path d="M169 392c57-22 118-28 182-19" fill="none" stroke="#F3DDE3" stroke-linecap="round" stroke-width="14" opacity=".9"/>
+</svg>

@@ -1,0 +1,1 @@
+ALTER TABLE `gym_settings` MODIFY COLUMN `gymName` varchar(160) NOT NULL DEFAULT 'Fit Crush';

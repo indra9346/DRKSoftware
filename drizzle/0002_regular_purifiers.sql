@@ -1,0 +1,1 @@
+ALTER TABLE `gym_settings` ADD `ownerOpenId` varchar(64);

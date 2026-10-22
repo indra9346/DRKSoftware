@@ -1,0 +1,13 @@
+packages:
+  - .
+patchedDependencies:
+  wouter@3.7.1: patches/wouter@3.7.1.patch
+overrides:
+  tailwindcss>nanoid: 3.3.7
+  # Security patch releases for transitive deps (QA audit 2026-10-22).
+  proxy-addr: ^2.0.8
+  lodash: ^4.18.0
+  lodash-es: ^4.18.0
+onlyBuiltDependencies:
+  - '@tailwindcss/oxide'
+  - esbuild
