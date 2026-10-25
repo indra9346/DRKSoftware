@@ -1030,13 +1030,34 @@ export default function Home() {
                   ? `${inactiveCountLabel} member${inactiveRows.length === 1 && !data.limitsExceeded.includes("inactive members") ? "" : "s"} without a recent visit.`
                   : "Your visit cadence looks healthy. Follow up before a quiet week becomes a quiet month."}
               </p>
+              {inactiveRows.length > 0 && (
+                <ul className="retention-list">
+                  {inactiveRows.slice(0, 4).map(row => (
+                    <li key={row.member.id}>
+                      <strong>{row.member.name}</strong>
+                      <small>
+                        {row.lastVisit
+                          ? `Last visit ${prettyDate(row.lastVisit)}`
+                          : "No visit yet"}
+                      </small>
+                    </li>
+                  ))}
+                  {inactiveRows.length > 4 && (
+                    <li className="retention-more">
+                      +{inactiveRows.length - 4} more
+                    </li>
+                  )}
+                </ul>
+              )}
               <button
                 className="button button-light"
                 onClick={() => setView("retention")}
               >
                 Review follow-ups <ArrowRight size={15} />
               </button>
-              <div className="retention-watermark">S</div>
+              <div className="retention-watermark" aria-hidden="true">
+                <Zap size={210} strokeWidth={1.2} />
+              </div>
             </section>
           </div>
         </>

@@ -182,7 +182,9 @@ export function GymShell({
         </nav>
         <div className="sidebar-bottom">
           <div className="sidebar-note">
-            <span className="note-mark">S</span>
+            <span className="note-mark" aria-hidden="true">
+              <Zap size={15} strokeWidth={2.4} />
+            </span>
             <div>
               <strong>Every visit, accounted for.</strong>
               <small>
@@ -198,7 +200,7 @@ export function GymShell({
           </div>
           <button className="sidebar-user" onClick={onLogout}>
             <span className="user-avatar">
-              {userName.trim().charAt(0).toUpperCase() || "S"}
+              {userName.trim().charAt(0).toUpperCase() || "F"}
             </span>
             <span className="sidebar-user-text">
               <strong>{userName || "Gym staff"}</strong>
@@ -252,7 +254,7 @@ export function GymShell({
               }).format(new Date())}
             </span>
             <span className="topbar-avatar">
-              {userName.trim().charAt(0).toUpperCase() || "S"}
+              {userName.trim().charAt(0).toUpperCase() || "F"}
             </span>
           </div>
         </header>

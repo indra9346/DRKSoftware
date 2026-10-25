@@ -931,7 +931,12 @@ textarea {
 .retention-card {
   position: relative;
   min-height: 270px;
+  display: flex;
+  flex-direction: column;
+  /* clip, not hidden: the watermark hangs past the edge, and a hidden-overflow box can be
+     scrolled by focus (Tab to the button), shifting the content up. */
   overflow: hidden;
+  overflow: clip;
   padding: 21px 23px;
   color: #ffffff;
   background: #181f09;
@@ -979,17 +984,54 @@ textarea {
   z-index: 1;
   min-height: 34px;
   font-size: 13px;
+  /* Stays at the bottom when the card stretches to the check-ins panel beside it. */
+  margin-top: auto;
+  align-self: flex-start;
+}
+.retention-list {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 6px;
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+}
+.retention-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 5%);
+}
+.retention-list strong {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.retention-list small {
+  flex: none;
+  color: #a0a599;
+  font-size: 12px;
+}
+.retention-list .retention-more {
+  justify-content: flex-start;
+  color: #c6f31a;
+  font-size: 12px;
+  background: none;
+  padding: 2px 10px;
 }
 .retention-watermark {
   position: absolute;
-  right: -7px;
-  bottom: -46px;
+  right: -34px;
+  bottom: -30px;
+  display: flex;
   color: rgb(255 255 255 / 5%);
-  font-family: "Bebas Neue", "Arial Narrow", sans-serif;
-  font-size: 254px;
-  line-height: 1;
   pointer-events: none;
-  letter-spacing: 0.01em;
 }
 .empty-state {
   min-height: 155px;
