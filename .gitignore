@@ -114,3 +114,6 @@ client/public/__manus__/version.json
 
 # Manus preview logs (may contain session data)
 .manus-logs/
+
+# Local throwaway MySQL data for development
+.data/

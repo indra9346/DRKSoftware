@@ -3,6 +3,8 @@ import {
   decimal,
   index,
   int,
+  primaryKey,
+  mediumtext,
   mysqlEnum,
   mysqlTable,
   text,
@@ -173,7 +175,10 @@ export const attendance = mysqlTable(
     checkInDate: varchar("checkInDate", { length: 10 }).notNull(),
     checkedInAt: timestamp("checkedInAt").defaultNow().notNull(),
     checkedOutAt: timestamp("checkedOutAt"),
-    method: mysqlEnum("method", ["qr", "manual"]).default("manual").notNull(),
+    // biometric = recorded by the fingerprint machine at the entrance (staffId 0).
+    method: mysqlEnum("method", ["qr", "manual", "biometric"])
+      .default("manual")
+      .notNull(),
     staffId: int("staffId").notNull(),
   },
   table => ({
@@ -333,6 +338,200 @@ export const auditLogs = mysqlTable(
     ),
   })
 );
+
+// ---------------------------------------------------------------- fingerprint machine
+// eSSL / ZKTeco machines over ADMS (PUSH protocol). See docs/BIOMETRIC.md.
+
+/** A member's User ID (PIN) on the fingerprint machine, plus the owner's access override. */
+export const biometricMembers = mysqlTable("gym_biometric_members", {
+  memberId: int("memberId").primaryKey(),
+  pin: int("pin").notNull().unique(),
+  override: mysqlEnum("override", ["allow", "block"]),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const devices = mysqlTable("gym_devices", {
+  sn: varchar("sn", { length: 64 }).primaryKey(),
+  name: varchar("name", { length: 80 }).default("Entrance").notNull(),
+  status: mysqlEnum("status", ["pending", "active", "disabled"])
+    .default("pending")
+    .notNull(),
+  lastSeenAt: timestamp("lastSeenAt"),
+  lastIp: varchar("lastIp", { length: 64 }),
+  pushVersion: varchar("pushVersion", { length: 32 }),
+  info: text("info"),
+  attStamp: varchar("attStamp", { length: 32 }),
+  opStamp: varchar("opStamp", { length: 32 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const deviceCommands = mysqlTable(
+  "gym_device_commands",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    deviceSn: varchar("deviceSn", { length: 64 }).notNull(),
+    command: mediumtext("command").notNull(),
+    kind: varchar("kind", { length: 32 }).notNull(),
+    memberId: int("memberId"),
+    status: mysqlEnum("status", [
+      "queued",
+      "sent",
+      "done",
+      "failed",
+      "cancelled",
+    ])
+      .default("queued")
+      .notNull(),
+    returnCode: int("returnCode"),
+    attempts: int("attempts").default(0).notNull(),
+    notBefore: timestamp("notBefore"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    sentAt: timestamp("sentAt"),
+    doneAt: timestamp("doneAt"),
+  },
+  table => ({
+    queueIdx: index("gym_device_commands_queue_idx").on(
+      table.deviceSn,
+      table.status,
+      table.id
+    ),
+    memberIdx: index("gym_device_commands_member_idx").on(table.memberId),
+  })
+);
+
+/** What each machine reports it holds; card/password are kept so updates never wipe them. */
+export const deviceUsers = mysqlTable(
+  "gym_device_users",
+  {
+    deviceSn: varchar("deviceSn", { length: 64 }).notNull(),
+    pin: varchar("pin", { length: 32 }).notNull(),
+    name: varchar("name", { length: 80 }),
+    privilege: int("privilege"),
+    card: varchar("card", { length: 32 }),
+    password: varchar("password", { length: 32 }),
+    grp: varchar("grp", { length: 8 }),
+    verify: varchar("verify", { length: 8 }),
+    // Card and keypad password taken off during a block, put back on renewal.
+    heldCard: varchar("heldCard", { length: 32 }),
+    heldPassword: varchar("heldPassword", { length: 32 }),
+    fingerprints: int("fingerprints").default(0).notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    pk: primaryKey({ columns: [table.deviceSn, table.pin] }),
+  })
+);
+
+/** Backup of every fingerprint the machine uploads, restored after a block ends. */
+export const fingerprintTemplates = mysqlTable(
+  "gym_fingerprint_templates",
+  {
+    pin: varchar("pin", { length: 32 }).notNull(),
+    fid: int("fid").notNull(),
+    template: mediumtext("template").notNull(),
+    size: int("size"),
+    valid: int("valid"),
+    sourceSn: varchar("sourceSn", { length: 64 }),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({ pk: primaryKey({ columns: [table.pin, table.fid] }) })
+);
+
+/** What the software last told each machine for each member. */
+export const memberDeviceState = mysqlTable(
+  "gym_member_device_state",
+  {
+    deviceSn: varchar("deviceSn", { length: 64 }).notNull(),
+    memberId: int("memberId").notNull(),
+    present: boolean("present").notNull(),
+    allowed: boolean("allowed").notNull(),
+    blockMode: varchar("blockMode", { length: 16 }),
+    message: varchar("message", { length: 120 }),
+    appliedAt: timestamp("appliedAt").defaultNow().notNull(),
+  },
+  table => ({ pk: primaryKey({ columns: [table.deviceSn, table.memberId] }) })
+);
+
+/** Every punch the machine sends (allowed, blocked or unknown), for the gate screen. */
+export const biometricPunches = mysqlTable(
+  "gym_biometric_punches",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    deviceSn: varchar("deviceSn", { length: 64 }).notNull(),
+    pin: varchar("pin", { length: 32 }).notNull(),
+    memberId: int("memberId"),
+    punchedAt: timestamp("punchedAt").notNull(),
+    punchDate: varchar("punchDate", { length: 10 }).notNull(),
+    verifyType: int("verifyType"),
+    punchState: int("punchState"),
+    allowed: boolean("allowed"),
+    reason: varchar("reason", { length: 32 }),
+    headline: varchar("headline", { length: 160 }),
+    duplicate: boolean("duplicate").default(false).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    uniquePunch: uniqueIndex("gym_biometric_punches_unique").on(
+      table.deviceSn,
+      table.pin,
+      table.punchedAt
+    ),
+    dayIdx: index("gym_biometric_punches_day_idx").on(table.punchDate),
+  })
+);
+
+/** WhatsApp messages for members, created once per dedupe key. */
+export const memberAlerts = mysqlTable(
+  "gym_member_alerts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    memberId: int("memberId").notNull(),
+    kind: varchar("kind", { length: 32 }).notNull(),
+    dedupeKey: varchar("dedupeKey", { length: 80 }).notNull(),
+    phone: varchar("phone", { length: 20 }),
+    message: text("message").notNull(),
+    status: mysqlEnum("status", ["pending", "sent", "failed", "skipped"])
+      .default("pending")
+      .notNull(),
+    error: varchar("error", { length: 300 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    sentAt: timestamp("sentAt"),
+    sentBy: int("sentBy"),
+  },
+  table => ({
+    once: uniqueIndex("gym_member_alerts_once").on(
+      table.memberId,
+      table.kind,
+      table.dedupeKey
+    ),
+    statusIdx: index("gym_member_alerts_status_idx").on(table.status),
+  })
+);
+
+/** Recent raw traffic from the machines, for troubleshooting the connection. */
+export const deviceLog = mysqlTable(
+  "gym_device_log",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    at: timestamp("at").defaultNow().notNull(),
+    deviceSn: varchar("deviceSn", { length: 64 }),
+    method: varchar("method", { length: 8 }),
+    path: varchar("path", { length: 120 }),
+    query: varchar("query", { length: 500 }),
+    body: text("body"),
+    response: text("response"),
+  },
+  table => ({ atIdx: index("gym_device_log_at_idx").on(table.at) })
+);
+
+/** Fingerprint-machine and alert settings (one row, JSON), plus the daily-job marker. */
+export const biometricConfig = mysqlTable("gym_biometric_config", {
+  id: int("id").primaryKey(),
+  value: text("value").notNull(),
+  lastDailyRun: varchar("lastDailyRun", { length: 10 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;

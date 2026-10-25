@@ -5,8 +5,10 @@ import {
   CircleDollarSign,
   ClipboardList,
   Dumbbell,
+  Fingerprint,
   LayoutDashboard,
   LogOut,
+  MessageCircle,
   Menu,
   Settings,
   Shield,
@@ -24,6 +26,8 @@ type View =
   | "members"
   | "plans"
   | "attendance"
+  | "machine"
+  | "alerts"
   | "billing"
   | "training"
   | "reports"
@@ -59,6 +63,18 @@ const items: Array<{
     id: "attendance",
     label: "Check-in",
     icon: Activity,
+    roles: ["owner", "admin", "receptionist"],
+  },
+  {
+    id: "machine",
+    label: "Fingerprint machine",
+    icon: Fingerprint,
+    roles: ["owner", "admin", "receptionist"],
+  },
+  {
+    id: "alerts",
+    label: "WhatsApp alerts",
+    icon: MessageCircle,
     roles: ["owner", "admin", "receptionist"],
   },
   {

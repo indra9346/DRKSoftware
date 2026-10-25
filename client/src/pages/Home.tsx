@@ -3,6 +3,7 @@ import { GymShell, type GymView } from "@/components/gym/GymShell";
 import { Field, Modal } from "@/components/gym/Modal";
 import { Field as FormField } from "@/components/gym/Modal";
 import { QrScanner } from "@/components/gym/QrScanner";
+import { AlertsView, FingerprintModal, MachineView } from "@/components/gym/Biometric";
 import {
   csvExport,
   daysBetween,
@@ -34,6 +35,7 @@ import {
   Dumbbell,
   FileText,
   Filter,
+  Fingerprint,
   Flame,
   HeartPulse,
   LoaderCircle,
@@ -73,6 +75,7 @@ type ModalState =
   | "qr"
   | "freeze"
   | "reactivate"
+  | "fingerprint"
   | null;
 
 const currency = (amount: number) => inr(amount);
@@ -980,7 +983,9 @@ export default function Home() {
                           {row.memberCode} ·{" "}
                           {row.item.method === "qr"
                             ? "QR scan"
-                            : "Manual check-in"}
+                            : row.item.method === "biometric"
+                              ? "Fingerprint"
+                              : "Manual check-in"}
                         </small>
                       </div>
                       <CheckCircle2 className="activity-check" size={16} />
@@ -1146,6 +1151,17 @@ export default function Home() {
                               >
                                 <QrCode size={15} />
                               </button>
+                              {role !== "trainer" && (
+                                <button
+                                  className="text-button"
+                                  onClick={() =>
+                                    chooseMember(member, "fingerprint")
+                                  }
+                                  title="Fingerprint access"
+                                >
+                                  <Fingerprint size={15} />
+                                </button>
+                              )}
                               {role !== "trainer" && (
                                 <button
                                   className="text-button"
@@ -1492,7 +1508,11 @@ export default function Home() {
                         <strong>{row.memberName}</strong>
                         <small>
                           {row.memberCode} ·{" "}
-                          {row.item.method === "qr" ? "QR scan" : "Manual"}
+                          {row.item.method === "qr"
+                            ? "QR scan"
+                            : row.item.method === "biometric"
+                              ? "Fingerprint"
+                              : "Manual"}
                         </small>
                       </div>
                       {row.item.checkInDate === today &&
@@ -1524,6 +1544,10 @@ export default function Home() {
           </div>
         </>
       )}
+
+      {view === "machine" && isFrontDesk && <MachineView />}
+
+      {view === "alerts" && isFrontDesk && <AlertsView />}
 
       {view === "billing" && (
         <>
@@ -4155,6 +4179,14 @@ export default function Home() {
             </div>
           </form>
         </Modal>
+      )}
+
+      {modal === "fingerprint" && selectedMember && (
+        <FingerprintModal
+          member={selectedMember}
+          isAdmin={isAdmin}
+          onClose={() => setModal(null)}
+        />
       )}
 
       {modal === "qr" && selectedMember && (

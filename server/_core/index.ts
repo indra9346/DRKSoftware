@@ -6,12 +6,15 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerDevLoginRoutes } from "./devLogin";
 import { publicPlatformScript } from "./publicConfig";
 import { appRouter } from "../routers";
+import { registerIclockRoutes } from "../biometric/iclock";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  // Fingerprint machine (eSSL ADMS). Before the body parsers: it posts plain text.
+  registerIclockRoutes(app);
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));

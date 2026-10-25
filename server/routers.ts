@@ -2,6 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
+import { biometricRouter } from "./biometric/router";
 import { gymRouter } from "./gymRouter";
 
 export const appRouter = router({
@@ -15,6 +16,7 @@ export const appRouter = router({
     }),
   }),
   gym: gymRouter,
+  biometric: biometricRouter,
 });
 
 export type AppRouter = typeof appRouter;

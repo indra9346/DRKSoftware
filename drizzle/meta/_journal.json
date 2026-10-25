@@ -50,6 +50,13 @@
       "when": 1792656570765,
       "tag": "0006_fit_crush_rename",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1792899317190,
+      "tag": "0007_fingerprint_machine",
+      "breakpoints": true
     }
   ]
 }
