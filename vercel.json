@@ -1,18 +1,27 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "npx -y pnpm@10.18.0 install --frozen-lockfile",
+  "installCommand": "rm -rf node_modules && npx -y pnpm@10.18.0 install --frozen-lockfile",
   "buildCommand": "npx -y pnpm@10.18.0 build",
   "outputDirectory": "dist/public",
   "functions": {
     "api/index.js": {
       "maxDuration": 30,
-      "includeFiles": "{dist/vercel.js,drizzle/**,node_modules/@electric-sql/pglite/dist/pglite.wasm,node_modules/@electric-sql/pglite/dist/pglite.data,node_modules/@electric-sql/pglite/dist/initdb.wasm,node_modules/@electric-sql/pglite/dist/initdb.js}"
+      "includeFiles": "drizzle/**"
     }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index" },
-    { "source": "/iclock/(.*)", "destination": "/api/index" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/iclock/(.*)",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }
