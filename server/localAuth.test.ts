@@ -228,7 +228,7 @@ describe.skipIf(!safe)("password sign-in against PostgreSQL", () => {
     const client = await openClient(url);
     expect(await tablesWithoutRls(client)).toEqual([]);
     const { rows } = await client.query(
-      `select count(*)::int as n from pg_trigger where tgname = 'fitcrush_updated_at'`
+      `select count(*)::int as n from pg_trigger where tgname = 'gym_updated_at'`
     );
     expect(rows[0].n).toBe(12);
     await client.end();

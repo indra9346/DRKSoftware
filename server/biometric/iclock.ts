@@ -130,7 +130,7 @@ async function cdata(
   if (device.status !== "active")
     return [
       device.status === "pending"
-        ? "Machine waiting for approval in Fit Crush software"
+        ? "Machine waiting for approval in the gym software"
         : "Machine disabled",
       403,
     ];

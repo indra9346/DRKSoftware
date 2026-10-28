@@ -1,9 +1,9 @@
-# Render Blueprint for the Fit Crush app (docs/SETUP.md, step 3).
+# Render Blueprint for the DRK Fitness Gym app (docs/SETUP.md).
 # Render → New → Blueprint → pick this repository. Render asks once for the values marked
 # `sync: false`; JWT_SECRET is generated for you. The database is Supabase (not on Render).
 services:
   - type: web
-    name: fitcrush
+    name: drk-fitness
     runtime: docker
     # Closest Render region to Supabase Mumbai. Cannot be changed after creation.
     region: singapore

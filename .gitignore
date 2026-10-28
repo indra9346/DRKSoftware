@@ -117,3 +117,7 @@ client/public/__manus__/version.json
 
 # Local throwaway MySQL data for development
 .data/
+
+# Cloudflare (wrangler) local state and local secrets
+.wrangler/
+.dev.vars

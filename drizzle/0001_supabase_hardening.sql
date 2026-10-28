@@ -1,5 +1,5 @@
 -- 1. Keep "updatedAt" current on every UPDATE, like MySQL's ON UPDATE CURRENT_TIMESTAMP.
-CREATE OR REPLACE FUNCTION "fitcrush_set_updated_at"() RETURNS trigger
+CREATE OR REPLACE FUNCTION "gym_set_updated_at"() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
   NEW."updatedAt" := now();
@@ -15,9 +15,9 @@ BEGIN
     JOIN information_schema.tables tb ON tb.table_schema = c.table_schema AND tb.table_name = c.table_name
     WHERE c.table_schema = current_schema() AND c.column_name = 'updatedAt' AND tb.table_type = 'BASE TABLE'
   LOOP
-    EXECUTE format('DROP TRIGGER IF EXISTS fitcrush_updated_at ON %I', t);
+    EXECUTE format('DROP TRIGGER IF EXISTS gym_updated_at ON %I', t);
     EXECUTE format(
-      'CREATE TRIGGER fitcrush_updated_at BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION "fitcrush_set_updated_at"()',
+      'CREATE TRIGGER gym_updated_at BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION "gym_set_updated_at"()',
       t
     );
   END LOOP;

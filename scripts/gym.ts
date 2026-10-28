@@ -1,11 +1,11 @@
-// Fit Crush server setup and health checks (Supabase / any PostgreSQL).
+// Gym software server setup and health checks (Supabase / any PostgreSQL).
 //
-//   pnpm fitcrush setup                 create/update the tables, create the owner login
-//   pnpm fitcrush check                 read-only report: settings, database, machine
-//   pnpm fitcrush password <email>      set or reset a login's password (--owner [--name "Name"] makes it the owner)
-//   pnpm fitcrush secret                print a new random JWT_SECRET
+//   pnpm gym setup                 create/update the tables, create the owner login
+//   pnpm gym check                 read-only report: settings, database, machine
+//   pnpm gym password <email>      set or reset a login's password (--owner [--name "Name"] makes it the owner)
+//   pnpm gym secret                print a new random JWT_SECRET
 //
-// On a server without the source tools, the built copy does the same: node dist/fitcrush.js check
+// On a server without the source tools, the built copy does the same: node dist/gym.js check
 // Settings come from the environment or a .env file next to package.json (see .env.example).
 import "dotenv/config";
 import { randomBytes } from "crypto";
@@ -53,7 +53,7 @@ function ask(question: string, hidden = false): Promise<string> {
   // Without a keyboard (piped or scheduled runs) a prompt would wait forever.
   if (!process.stdin.isTTY) {
     console.log(`
-${question.trim()} Not typed in: pass it as an option (see the top of scripts/fitcrush.ts).`);
+${question.trim()} Not typed in: pass it as an option (see the top of scripts/gym.ts).`);
     process.exit(1);
   }
   const rl = readline.createInterface({
@@ -142,12 +142,12 @@ async function setup() {
   else
     ok("Tables are closed to the Supabase public API (row level security on)");
   const settings = await getGymSettings();
-  ok(`Gym settings ready (${settings?.gymName ?? "Fit Crush"})`);
+  ok(`Gym settings ready (${settings?.gymName ?? "the gym"})`);
 
   head("Owner login");
   if (settings?.ownerOpenId) {
     ok(
-      "An owner is already set. Use `fitcrush password <email>` to reset a password."
+      "An owner is already set. Use `gym password <email>` to reset a password."
     );
   } else {
     const email = normalizeEmail(
@@ -179,7 +179,7 @@ async function setup() {
     "  Start the app, open it in a browser and sign in with the owner's email and password."
   );
   console.log(
-    "  Then run `fitcrush check` any time to see the database and machine status."
+    "  Then run `gym check` any time to see the database and machine status."
   );
 }
 
@@ -196,7 +196,7 @@ async function checkAll() {
   }
   if (process.env.AUTO_MIGRATE === "true")
     ok("AUTO_MIGRATE=true: the app updates its tables on start");
-  else warn("AUTO_MIGRATE is off: run `fitcrush setup` after every update");
+  else warn("AUTO_MIGRATE is off: run `gym setup` after every update");
   if (process.env.FIRST_OWNER_PASSWORD)
     warn(
       "FIRST_OWNER_PASSWORD is still set; remove it after the first sign-in"
@@ -221,9 +221,7 @@ async function checkAll() {
   }
   const pending = await pendingMigrations(client);
   if (pending.length) {
-    fail(
-      `Tables not up to date (${pending.join(", ")}). Run \`fitcrush setup\`.`
-    );
+    fail(`Tables not up to date (${pending.join(", ")}). Run \`gym setup\`.`);
     await client.end();
     return finish(problems + 1);
   }
@@ -241,7 +239,7 @@ async function checkAll() {
   const settings = await getGymSettings();
   if (settings?.ownerOpenId) ok(`Owner is set (gym name: ${settings.gymName})`);
   else {
-    fail("No owner yet. Run `fitcrush setup`.");
+    fail("No owner yet. Run `gym setup`.");
     problems++;
   }
   const [{ n: memberCount }] = await db.select({ n: count() }).from(members);
@@ -251,7 +249,7 @@ async function checkAll() {
     .where(eq(plans.active, true));
   ok(`${memberCount} members, ${planCount} active plans`);
   if (!planCount)
-    warn("No active plans yet: add Fit Crush's plans and prices under Plans");
+    warn("No active plans yet: add the gym's plans and prices under Plans");
 
   head("Fingerprint machine");
   const machineSettings = await getBiometricSettings(db);
@@ -332,7 +330,7 @@ async function password() {
   requireSettings();
   const email = process.argv[3];
   if (!email || !email.includes("@")) {
-    console.log("Usage: fitcrush password <email> [--owner]");
+    console.log("Usage: gym password <email> [--owner]");
     process.exit(1);
   }
   const pending = await (async () => {
@@ -344,7 +342,7 @@ async function password() {
     }
   })();
   if (pending.length) {
-    fail("The tables are not set up yet. Run `fitcrush setup` first.");
+    fail("The tables are not set up yet. Run `gym setup` first.");
     process.exit(1);
   }
   const existed = Boolean(await findCredential(email));
@@ -374,9 +372,7 @@ const run =
         ? password
         : null;
 if (!run) {
-  console.log(
-    "Usage: fitcrush setup | check | password <email> [--owner] | secret"
-  );
+  console.log("Usage: gym setup | check | password <email> [--owner] | secret");
   process.exit(1);
 }
 run()

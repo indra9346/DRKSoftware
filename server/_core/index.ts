@@ -11,7 +11,7 @@ import { publicPlatformScript } from "./publicConfig";
 import { appRouter } from "../routers";
 import { registerIclockRoutes } from "../biometric/iclock";
 import { createContext } from "./context";
-import { serveStatic, setupVite } from "./vite";
+import { serveStatic } from "./static";
 
 async function startServer() {
   const localAuth = localAuthEnabled();
@@ -53,6 +53,8 @@ async function startServer() {
   app.use("/api", (_req, res) => res.status(404).json({ error: "Not found" }));
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
+    // Loaded only here, so production never needs Vite installed.
+    const { setupVite } = await import("./vite");
     await setupVite(app, server);
   } else {
     serveStatic(app);

@@ -389,7 +389,7 @@ export async function ensureFirstOwner(env: NodeJS.ProcessEnv = process.env) {
     await syncAccount(openId, email);
     console.warn(
       `[Setup] A different owner is already set, so ${normalizeEmail(email)} was created without a role. ` +
-        "Run `node dist/fitcrush.js password <email> --owner` to make it the owner."
+        "Run `node dist/gym.js password <email> --owner` to make it the owner."
     );
   }
 }

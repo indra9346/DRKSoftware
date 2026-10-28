@@ -327,7 +327,7 @@ export const ALERT_KINDS: { kind: AlertKind; label: string; when: string }[] = [
 
 export const DEFAULT_TEMPLATES: Record<AlertKind, string> = {
   welcome:
-    "Hi {name}, welcome to {gym}! Your {plan} membership runs from {start} to {validUntil}. Use your fingerprint at the entrance. Let's crush your limits! 💪",
+    "Hi {name}, welcome to {gym}! Your {plan} membership runs from {start} to {validUntil}. Use your fingerprint at the entrance. Stronger, healthier, happier - see you at the gym! 💪",
   renewed:
     "Hi {name}, your {gym} membership is renewed: {plan}, valid till {validUntil}. See you at the gym! 💪",
   receipt:
@@ -342,7 +342,7 @@ export const DEFAULT_TEMPLATES: Record<AlertKind, string> = {
     "Hi {name}, you tried to enter {gym} today but access is blocked ({status}). Please renew and pay at the front desk - access opens again as soon as you pay.",
   dues: "Hi {name}, ₹{balance} is pending on your {gym} membership. Please clear it at the front desk. Thank you!",
   absent:
-    "Hi {name}, we haven't seen you at {gym} for {absentDays} days. Your membership is active till {validUntil} - come back and crush it! 💪",
+    "Hi {name}, we haven't seen you at {gym} for {absentDays} days. Your membership is active till {validUntil} - come back and keep getting stronger! 💪",
   birthday:
     "Happy birthday, {name}! 🎉 Wishing you a strong and healthy year ahead. - Team {gym}",
   winback:

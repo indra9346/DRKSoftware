@@ -24,6 +24,7 @@ import {
   payments,
 } from "../../drizzle/schema";
 import { getDb, getGymSettings } from "../db";
+import { BRAND } from "@shared/brand";
 import {
   cmdDeleteFingers,
   cmdDeleteUser,
@@ -922,7 +923,7 @@ export function whatsappMode(): "manual" | "cloud_api" {
 
 async function gymName(): Promise<string> {
   return (
-    (await getGymSettings().catch(() => undefined))?.gymName ?? "Fit Crush"
+    (await getGymSettings().catch(() => undefined))?.gymName ?? BRAND.name
   );
 }
 
@@ -1077,7 +1078,7 @@ async function sendCloudApi(
         to: phone,
         type: "template",
         template: {
-          name: process.env.WHATSAPP_TEMPLATE ?? "fitcrush_alert",
+          name: process.env.WHATSAPP_TEMPLATE ?? "gym_alert",
           language: { code: process.env.WHATSAPP_TEMPLATE_LANG ?? "en" },
           components: [
             {

@@ -1,7 +1,7 @@
 // Platform values are read at use time. See the Webdev service/authentication skills.
 // Self-hosted installs (AUTH_MODE=local) use the plain names: JWT_SECRET, APP_ID.
 export const ENV = {
-  get appId() { return process.env.MANUS_PROJECT_ID || process.env.APP_ID || (localAuthEnabled() ? "fitcrush" : ""); },
+  get appId() { return process.env.MANUS_PROJECT_ID || process.env.APP_ID || (localAuthEnabled() ? "gym" : ""); },
   get cookieSecret() { return process.env.MANUS_JWT_SECRET || process.env.JWT_SECRET || ""; },
   get databaseUrl() { return process.env.DATABASE_URL ?? ""; },
   get oAuthServerUrl() { return process.env.MANUS_OAUTH_API_URL ?? ""; },

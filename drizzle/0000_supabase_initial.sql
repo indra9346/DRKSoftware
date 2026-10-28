@@ -155,7 +155,7 @@ CREATE TABLE "gym_follow_ups" (
 CREATE TABLE "gym_settings" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"ownerOpenId" varchar(64),
-	"gymName" varchar(160) DEFAULT 'Fit Crush' NOT NULL,
+	"gymName" varchar(160) DEFAULT 'DRK Fitness Gym' NOT NULL,
 	"logoUrl" text,
 	"address" varchar(500),
 	"contactPhone" varchar(32),

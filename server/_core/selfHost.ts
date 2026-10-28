@@ -1,5 +1,5 @@
 // Self-hosted installs (Supabase / any PostgreSQL): database migrations and start-up
-// checks. Used by the server at start (AUTO_MIGRATE=true) and by scripts/fitcrush.ts.
+// checks. Used by the server at start (AUTO_MIGRATE=true) and by scripts/gym.ts.
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { existsSync, readFileSync } from "fs";

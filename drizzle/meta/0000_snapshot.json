@@ -1031,7 +1031,7 @@
           "type": "varchar(160)",
           "primaryKey": false,
           "notNull": true,
-          "default": "'Fit Crush'"
+          "default": "'DRK Fitness Gym'"
         },
         "logoUrl": {
           "name": "logoUrl",

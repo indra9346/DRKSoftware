@@ -5,3 +5,9 @@ dist
 .env.*
 .manus-logs
 *.manus-starter-*
+.wrangler
+.dev.vars
+.data
+cloudflare
+.github
+docs

@@ -16,10 +16,10 @@ import {
   UserRound,
   Users,
   X,
-  Zap,
   type LucideIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { BRAND } from "@shared/brand";
 import { roleLabels, type GymRole } from "@shared/gym";
 
 type View =
@@ -149,10 +149,10 @@ export function GymShell({
       <aside className={`sidebar${open ? " sidebar-open" : ""}`}>
         <div className="brand-lockup">
           <div className="brand-symbol" aria-hidden="true">
-            <Zap size={19} strokeWidth={2.4} />
+            <img src={BRAND.mark} alt="" />
           </div>
           <div>
-            <strong>FIT CRUSH</strong>
+            <strong>{BRAND.shortName}</strong>
             <small>GYM MANAGEMENT SOFTWARE</small>
           </div>
           <button
@@ -187,7 +187,7 @@ export function GymShell({
         <div className="sidebar-bottom">
           <div className="sidebar-note">
             <span className="note-mark" aria-hidden="true">
-              <Zap size={15} strokeWidth={2.4} />
+              <img src={BRAND.mark} alt="" />
             </span>
             <div>
               <strong>Every visit, accounted for.</strong>
@@ -238,15 +238,15 @@ export function GymShell({
           </button>
           <div className="mobile-brand">
             <span className="brand-symbol mini" aria-hidden="true">
-              <Zap size={15} strokeWidth={2.4} />
+              <img src={BRAND.mark} alt="" />
             </span>
-            <strong>FIT CRUSH</strong>
+            <strong>{BRAND.shortName}</strong>
           </div>
           <span className="role-pill">{roleLabels[role]}</span>
         </div>
         <header className="topbar">
           <div className="breadcrumb">
-            <span>{gymName || "Fit Crush"}</span>
+            <span>{gymName || BRAND.name}</span>
             <span className="crumb-slash">/</span>
             <strong>{current?.label ?? "Management"}</strong>
           </div>

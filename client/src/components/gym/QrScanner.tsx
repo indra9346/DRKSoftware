@@ -1,4 +1,5 @@
 import { Camera, CameraOff } from "lucide-react";
+import { QR_PREFIX_PATTERN } from "@shared/brand";
 import { useEffect, useRef, useState } from "react";
 
 type Detection = { rawValue: string };
@@ -110,7 +111,7 @@ export function QrScanner({
         if (video && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
           try {
             const raw = await decode(video);
-            const scanned = raw?.replace(/^(FITCRUSH|SWAN)[|:]/, "").trim();
+            const scanned = raw?.replace(QR_PREFIX_PATTERN, "").trim();
             if (scanned && !stopped) {
               callbackRef.current(scanned);
               return;

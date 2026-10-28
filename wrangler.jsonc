@@ -1,0 +1,31 @@
+// Cloudflare deployment of the gym software (docs/SETUP.md, step 3).
+// The Worker in cloudflare/worker.ts forwards every request to one Cloudflare Container built
+// from ./Dockerfile. Secrets (DATABASE_URL, JWT_SECRET, FIRST_OWNER_*) are set in the
+// Cloudflare dashboard or with `wrangler secret put`, never in this file.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "drk-fitness",
+  "main": "cloudflare/worker.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+  "containers": [
+    {
+      "class_name": "GymApp",
+      "image": "./Dockerfile",
+      // 1/4 vCPU, 1 GiB memory, 4 GB disk. The smaller "lite" (256 MiB) is too tight.
+      "instance_type": "basic",
+      // The Worker always uses one instance; this is only an upper bound.
+      "max_instances": 2
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "APP", "class_name": "GymApp" }]
+  },
+  "exports": {
+    "GymApp": { "type": "durable-object", "storage": "sqlite" }
+  },
+  "vars": {
+    // India time (+5:30) in minutes for the fingerprint machine's clock.
+    "ADMS_TIMEZONE": "330"
+  }
+}

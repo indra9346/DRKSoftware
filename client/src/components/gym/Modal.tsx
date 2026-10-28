@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import { BRAND } from "@shared/brand";
 import { X } from "lucide-react";
 
 const FOCUSABLE =
@@ -93,7 +94,7 @@ export function Modal({
       >
         <header className="modal-header">
           <div>
-            <p className="eyebrow">FIT CRUSH · MANAGEMENT DESK</p>
+            <p className="eyebrow">{BRAND.shortName} · MANAGEMENT DESK</p>
             <h2>{title}</h2>
             {description && <p className="muted">{description}</p>}
           </div>

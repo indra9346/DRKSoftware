@@ -1,7 +1,7 @@
-# Fit Crush: fingerprint machine and door set-up (for Gowda)
+# DRK Fitness Gym: fingerprint machine and door set-up (for Gowda)
 
 **Goal:** a member with a valid, paid membership places a finger → the door unlocks and the visit is
-recorded in the Fit Crush software. An expired member's finger is **not accepted** → the door stays
+recorded in the DRK Fitness Gym software. An expired member's finger is **not accepted** → the door stays
 locked, and the reception screen shows **ACCESS BLOCKED – renew & pay**. When they renew at the desk,
 their finger works again within about 10 seconds, without enrolling again.
 
@@ -80,14 +80,14 @@ Save, then restart the machine.
 ### B. No HTTPS (most units): bridge on the front-desk PC
 
 1. Install **Node.js 20 LTS** (or newer) from nodejs.org on the front-desk PC.
-2. Copy the `bridge` folder from SWAN to `C:\fitcrush-bridge`.
-3. Right-click `start-bridge.cmd` → Edit. Set `FITCRUSH_URL=` to the software address
+2. Copy the `bridge` folder from SWAN to `C:\gym-bridge`.
+3. Right-click `start-bridge.cmd` → Edit. Set `GYM_SOFTWARE_URL=` to the software address
    (e.g. `https://app.example.in`). Save.
 4. Double-click `start-bridge.cmd`. The window shows the PC's address, e.g. `192.168.1.20`. Keep it
    open (it restarts itself if it stops).
 5. Allow the port in Windows Firewall. Open Command Prompt **as administrator** and run:
    ```
-   netsh advfirewall firewall add rule name="Fit Crush bridge" dir=in action=allow protocol=TCP localport=8081
+   netsh advfirewall firewall add rule name="DRK Fitness Gym bridge" dir=in action=allow protocol=TCP localport=8081
    ```
 6. On the router, give the PC a **fixed address** (DHCP reservation).
 7. Start the bridge with Windows: Win+R → `shell:startup` → put a shortcut to `start-bridge.cmd` there.

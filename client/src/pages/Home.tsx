@@ -1,4 +1,5 @@
 import { startLogin } from "@/const";
+import { BRAND } from "@shared/brand";
 import { GymShell, type GymView } from "@/components/gym/GymShell";
 import { Field, Modal } from "@/components/gym/Modal";
 import { Field as FormField } from "@/components/gym/Modal";
@@ -58,7 +59,6 @@ import {
   Users,
   Wallet,
   X,
-  Zap,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -528,16 +528,14 @@ export default function Home() {
     return (
       <div className="auth-screen">
         <LoaderCircle className="spin" size={32} />
-        <p>Opening Fit Crush…</p>
+        <p>Opening {BRAND.name}…</p>
       </div>
     );
   if (!user)
     return (
       <div className="login-screen">
         <div className="login-card">
-          <div className="brand-symbol login-symbol" aria-hidden="true">
-            <Zap size={26} strokeWidth={2.4} />
-          </div>
+          <img className="login-logo" src={BRAND.logo} alt={BRAND.name} />
           <p className="eyebrow">GYM MANAGEMENT SOFTWARE</p>
           <h1>
             Good operations
@@ -584,7 +582,7 @@ export default function Home() {
           )}
         </div>
         <span className="login-side-note">
-          FIT CRUSH · GYM MANAGEMENT SOFTWARE
+          {BRAND.shortName} · GYM MANAGEMENT SOFTWARE
         </span>
       </div>
     );
@@ -727,7 +725,7 @@ export default function Home() {
   return (
     <GymShell
       role={role}
-      gymName={settings?.gymName ?? "Fit Crush"}
+      gymName={settings?.gymName ?? BRAND.name}
       userName={user.name ?? user.email ?? "Gym staff"}
       active={view}
       onNavigate={setView}
@@ -1087,7 +1085,7 @@ export default function Home() {
                 Review follow-ups <ArrowRight size={15} />
               </button>
               <div className="retention-watermark" aria-hidden="true">
-                <Zap size={210} strokeWidth={1.2} />
+                <img src={BRAND.mark} alt="" />
               </div>
             </section>
           </div>
@@ -1981,7 +1979,7 @@ export default function Home() {
                 if (!report) return;
                 const rows = makeReportRows();
                 csvExport(
-                  `fitcrush-collections-${reportFrom}-${reportTo}.csv`,
+                  `drk-fitness-collections-${reportFrom}-${reportTo}.csv`,
                   rows
                 );
               }}
@@ -2688,7 +2686,7 @@ export default function Home() {
                 <Field label="Gym name">
                   <input
                     name="gymName"
-                    defaultValue={settings?.gymName ?? "Fit Crush"}
+                    defaultValue={settings?.gymName ?? BRAND.name}
                     required
                   />
                 </Field>
@@ -2866,7 +2864,7 @@ export default function Home() {
             <section className="panel member-card-large">
               <div className="member-card-top">
                 <div>
-                  <p className="eyebrow">FIT CRUSH · MEMBER CARD</p>
+                  <p className="eyebrow">{BRAND.shortName} · MEMBER CARD</p>
                   <h2>{members[0]?.name ?? user.name}</h2>
                   <span className="mono-text">
                     {members[0]?.memberCode ?? "MEMBER"}
@@ -2879,7 +2877,7 @@ export default function Home() {
               {members[0] && (
                 <div className="portal-qr">
                   <QRCodeSVG
-                    value={`FITCRUSH|${members[0].memberCode}`}
+                    value={`${BRAND.qrPrefix}|${members[0].memberCode}`}
                     size={116}
                     includeMargin
                     bgColor="#ffffff"
@@ -4327,7 +4325,7 @@ export default function Home() {
           <div className="qr-modal-content">
             <div className="qr-paper">
               <QRCodeSVG
-                value={`FITCRUSH|${selectedMember.memberCode}`}
+                value={`${BRAND.qrPrefix}|${selectedMember.memberCode}`}
                 size={220}
                 includeMargin
                 bgColor="#fff"
@@ -4359,14 +4357,16 @@ export default function Home() {
           onClose={() => setModal(null)}
         >
           <div className="receipt-preview">
-            {settings?.logoUrl?.toLowerCase().startsWith("https://") && (
-              <img
-                className="receipt-gym-logo"
-                src={settings.logoUrl}
-                alt=""
-                referrerPolicy="no-referrer"
-              />
-            )}
+            <img
+              className="receipt-gym-logo"
+              src={
+                settings?.logoUrl?.toLowerCase().startsWith("https://")
+                  ? settings.logoUrl
+                  : BRAND.printLogo
+              }
+              alt=""
+              referrerPolicy="no-referrer"
+            />
             <div className="receipt-check">
               <Check size={19} />
             </div>
@@ -4523,7 +4523,7 @@ export default function Home() {
       )}
 
       <footer className="app-footer">
-        <span>FIT CRUSH GYM MANAGEMENT SOFTWARE · SINGLE BRANCH</span>
+        <span>{BRAND.shortName} · GYM MANAGEMENT SOFTWARE · SINGLE BRANCH</span>
         <span>India Standard Time · INR</span>
       </footer>
     </GymShell>

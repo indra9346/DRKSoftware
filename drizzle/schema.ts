@@ -372,7 +372,9 @@ export const loginCredentials = pgTable("gym_login_credentials", {
 export const gymSettings = pgTable("gym_settings", {
   id: serial("id").primaryKey(),
   ownerOpenId: varchar("ownerOpenId", { length: 64 }),
-  gymName: varchar("gymName", { length: 160 }).default("Fit Crush").notNull(),
+  gymName: varchar("gymName", { length: 160 })
+    .default("DRK Fitness Gym")
+    .notNull(),
   logoUrl: text("logoUrl"),
   address: varchar("address", { length: 500 }),
   contactPhone: varchar("contactPhone", { length: 32 }),

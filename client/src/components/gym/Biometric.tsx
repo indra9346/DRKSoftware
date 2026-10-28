@@ -249,7 +249,7 @@ export function MachineView() {
             <code>{d.server.host}</code>, Server Port{" "}
             <code>{d.server.port}</code>
             {d.server.https
-              ? ", HTTPS on. If the machine has no HTTPS option, run the Fit Crush bridge on the front-desk PC and point the machine at that PC (docs/BIOMETRIC.md)."
+              ? ", HTTPS on. If the machine has no HTTPS option, run the gym bridge program on the front-desk PC and point the machine at that PC (docs/BIOMETRIC.md)."
               : ", HTTPS off."}
           </li>
           <li>

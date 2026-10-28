@@ -1,18 +1,18 @@
-# Fit Crush Gym Management Software
+# DRK Fitness Gym Gym Management Software
 
-A single-branch gym operations web app built on React, Express, tRPC, Drizzle and PostgreSQL (Supabase). It covers members, plans and renewals, attendance, manual receipts, training, expenses, owner reports, retention follow-up and member self-service. The app uses India Standard Time (Asia/Kolkata) and INR.
+DRK Fitness Gym's single-branch gym operations web app built on React, Express, tRPC, Drizzle and PostgreSQL (Supabase). It covers members, plans and renewals, attendance, manual receipts, training, expenses, owner reports, retention follow-up and member self-service. The app uses India Standard Time (Asia/Kolkata) and INR.
 
-## Going live (Supabase + Render)
+## Going live (Supabase + Cloudflare)
 
-The self-hosted set-up uses a Supabase PostgreSQL database, the app on Render (`render.yaml` Blueprint, Docker) with the domain on Cloudflare, and email + password sign-in (`AUTH_MODE=local`). Step by step, including what to buy, every setting and the checks to run: [docs/SETUP.md](docs/SETUP.md). The settings template is [.env.example](.env.example).
+The self-hosted set-up uses a Supabase PostgreSQL database, the app on Cloudflare (a Worker in front of a Cloudflare Container built from the `Dockerfile`; `wrangler.jsonc`, deployed by `.github/workflows/deploy-cloudflare.yml`) with the domain on Cloudflare, `render.yaml` as an alternative host, and email + password sign-in (`AUTH_MODE=local`). Step by step, including what to buy, every setting and the checks to run: [docs/SETUP.md](docs/SETUP.md). The settings template is [.env.example](.env.example).
 
 ```bash
-pnpm fitcrush setup    # create/update the tables, create the owner login
-pnpm fitcrush check    # read-only report: settings, database, machine, blocking on/off
-pnpm fitcrush password <email>   # reset a password (owner: add --owner)
+pnpm gym setup    # create/update the tables, create the owner login
+pnpm gym check    # read-only report: settings, database, machine, blocking on/off
+pnpm gym password <email>   # reset a password (owner: add --owner)
 ```
 
-On the server the built copy does the same: `node dist/fitcrush.js check`.
+On the server the built copy does the same: `node dist/gym.js check`.
 
 With `AUTH_MODE=local` the owner adds staff under **Team & access** with an email and a password; roles, deactivation and the bootstrap-owner protection below work the same way. Passwords are stored as salted scrypt hashes, a login pauses for 15 minutes after 8 wrong passwords, and setting a new password signs that person out of their other devices. Every table has row level security on with no policies, so Supabase's public API keys cannot read gym data; the app's own database connection is unaffected.
 
@@ -37,7 +37,7 @@ Access rules are enforced in tRPC procedures as well as the interface. Payment c
 
 1. Register a member (name and mobile required; DOB, emergency contact, email, height, photo URL, goal and trainer are optional), choose an active plan if available, and enter any first payment. The profile, optional membership, first payment/receipt and audit records commit in one database transaction; a validation failure does not leave a partial registration. Duplicate mobile numbers are flagged for review and are never merged automatically.
 2. Create monthly, quarterly, half-yearly, yearly or custom plans. Each plan stores its own duration and price; Settings only supplies starting defaults. Renewals preserve previous terms. Members can request an active plan in their portal; staff review pending requests on the Plans page and complete them through the existing manual payment/due workflow. A portal request alone does not charge or activate a plan. If the requested plan becomes inactive, staff can close that pending request and the portal explains that the member can choose an active plan and submit another; this cancellation is audited. If a membership start overlaps a current/future term, only an authorized admin can override, and that decision is audited.
-3. Scan the generated `FITCRUSH|member-code` (older `SWAN|` badges still scan) QR where browser camera/BarcodeDetector support and permission are available, search by member ID/name/full phone, or allow a logged-in member to sign in through their portal. Only one check-in per member per IST calendar day is allowed; the member or authorized staff can sign out/close the open visit. The portal shows aggregate live occupancy (not other members’ identities) and refreshes automatically. Expired/future terms warn; only an admin can use the logged validity override. Inactive and frozen member profiles are blocked.
+3. Scan the generated `DRK|member-code` (older `FITCRUSH|` and `SWAN|` badges still scan) QR where browser camera/BarcodeDetector support and permission are available, search by member ID/name/full phone, or allow a logged-in member to sign in through their portal. Only one check-in per member per IST calendar day is allowed; the member or authorized staff can sign out/close the open visit. The portal shows aggregate live occupancy (not other members’ identities) and refreshes automatically. Expired/future terms warn; only an admin can use the logged validity override. Inactive and frozen member profiles are blocked.
 4. Record manual cash, UPI or bank payments, including partial amounts against a membership. Monthly receipt numbers are sequenced in the database. Open **Print / Save as PDF** from the receipt view; allow pop-ups in the browser if prompted.
 5. Use Reports & Expenses to filter collections, expenses, attendance, registrations and memberships by date. Outstanding membership balances are a current snapshot independent of that date range. **CSV / Excel** exports the report rows; **Export PDF** opens a print-ready report.
 6. Retention lists use editable expiry/no-visit thresholds. Follow-up status and notes are recorded manually. Member WhatsApp alerts (expiry reminders, access blocked, receipts and more) are prepared on **WhatsApp alerts** and sent by staff with one tap, or automatically if the WhatsApp Business Cloud API is configured; the app does not send SMS or email.
@@ -61,15 +61,15 @@ The initialized project uses Node.js with pnpm 10.18.0. Dependencies are in `pac
 ```bash
 pnpm dev       # development server (Preview port 3000)
 pnpm check     # TypeScript check
-pnpm build     # production frontend and server build (dist/index.js, dist/fitcrush.js)
+pnpm build     # production frontend and server build (dist/index.js, dist/gym.js)
 pnpm db:migrate # apply already-generated, committed migrations
 pnpm test      # rule tests; add BIOMETRIC_TEST_DATABASE_URL for the database tests
 ```
 
-The database is PostgreSQL 14+ (Supabase runs 15/17). For an intentional schema change, review `drizzle/schema.ts` and the generated SQL, then use `pnpm db:push`. Keep migrations additive and commit them with the app; with `AUTO_MIGRATE=true` the server applies them on start. A new table also needs row level security switched on (see `drizzle/0001_supabase_hardening.sql`); `fitcrush check` reports any table without it. `updatedAt` columns are kept current by a database trigger. Never point tests or sample data at the live database: the database tests drop everything in the `_test` database they are given, for example
+The database is PostgreSQL 14+ (Supabase runs 15/17). For an intentional schema change, review `drizzle/schema.ts` and the generated SQL, then use `pnpm db:push`. Keep migrations additive and commit them with the app; with `AUTO_MIGRATE=true` the server applies them on start. A new table also needs row level security switched on (see `drizzle/0001_supabase_hardening.sql`); `gym check` reports any table without it. `updatedAt` columns are kept current by a database trigger. Never point tests or sample data at the live database: the database tests drop everything in the `_test` database they are given, for example
 
 ```bash
-BIOMETRIC_TEST_DATABASE_URL=postgres://postgres@127.0.0.1:5432/fitcrush_test pnpm test
+BIOMETRIC_TEST_DATABASE_URL=postgres://postgres@127.0.0.1:5432/gym_test pnpm test
 ```
 
 On Manus, the OAuth cookie is `webdev_app_session` with `SameSite=None; Secure` for HTTPS Preview; with `AUTH_MODE=local` it is a first-party `SameSite=Lax` cookie, `Secure` whenever the site is on HTTPS.

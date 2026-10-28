@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Pretends to be an eSSL / ZKTeco fingerprint machine talking ADMS (PUSH protocol) to the
-// Fit Crush software. Use it to rehearse the setup before touching the real machine.
+// gym software. Use it to rehearse the setup before touching the real machine.
 //
-//   node scripts/essl-simulator.mjs --server http://127.0.0.1:3500 --sn FITCRUSH-SIM \
+//   node scripts/essl-simulator.mjs --server http://127.0.0.1:3500 --sn DRK-SIM \
 //        --enroll 1001,1002 --punch 1001 --polls 5
 //   node scripts/essl-simulator.mjs --server http://127.0.0.1:3500 --interactive
 //       (then type a member ID + Enter to "place a finger"; q to quit)
@@ -26,7 +26,7 @@ const args = Object.fromEntries(
   }, [])
 );
 const SERVER = (args.server ?? "http://127.0.0.1:3500").replace(/\/$/, "");
-const SN = args.sn ?? "FITCRUSH-SIM";
+const SN = args.sn ?? "DRK-SIM";
 const DELAY = Number(args.delay ?? 3) * 1000;
 
 /** pin -> { name, card, password, fingers: Map<fid, template> } : what this "machine" holds. */
@@ -65,7 +65,7 @@ const istNow = () =>
     .slice(0, 19)
     .replace("T", " ");
 const fakeTemplate = (pin, fid) =>
-  Buffer.from(`FITCRUSH-SIM-TEMPLATE-${pin}-${fid}`).toString("base64");
+  Buffer.from(`DRK-SIM-TEMPLATE-${pin}-${fid}`).toString("base64");
 
 async function http(method, path, query, body) {
   const qs = new URLSearchParams({ SN: SN, ...query }).toString();

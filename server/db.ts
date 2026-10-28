@@ -23,6 +23,7 @@ import {
   InsertUser,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { BRAND } from "@shared/brand";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
@@ -63,7 +64,7 @@ export function connectionOptions(
   return {
     connectionString: parsed.toString(),
     ssl: sslOption(parsed.hostname, env),
-    application_name: "fitcrush",
+    application_name: "gym-software",
   };
 }
 
@@ -250,7 +251,7 @@ export async function getMemberByCodeOrId(value: string) {
     await db
       .select()
       .from(members)
-      // Postgres compares text case-sensitively; staff may type "sw-ab12cd34".
+      // Postgres compares text case-sensitively; staff may type "drk-ab12cd34".
       .where(sql`upper(${members.memberCode}) = ${value.toUpperCase()}`)
       .limit(1)
   )[0];
@@ -311,7 +312,7 @@ export async function recordPaymentInTransaction(
       set: { lastNumber: sql`${receiptCounters.lastNumber} + 1` },
     })
     .returning();
-  const receiptNumber = `SW-${period}-${String(counter.lastNumber).padStart(6, "0")}`;
+  const receiptNumber = `${BRAND.codePrefix}-${period}-${String(counter.lastNumber).padStart(6, "0")}`;
   const [inserted] = await tx
     .insert(payments)
     .values({

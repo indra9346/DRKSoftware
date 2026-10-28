@@ -39,6 +39,7 @@ import {
   router,
 } from "./_core/trpc";
 import { ENV, localAuthEnabled } from "./_core/env";
+import { BRAND, QR_PREFIX_PATTERN } from "@shared/brand";
 
 const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const amount = z.number().int().min(0).max(100_000_000);
@@ -909,7 +910,7 @@ export const gymRouter = router({
             message: "Payment cannot exceed the amount due.",
           });
 
-        const memberCode = `SW-${nanoid(8).toUpperCase()}`;
+        const memberCode = `${BRAND.codePrefix}-${nanoid(8).toUpperCase()}`;
         const insertedMember = await tx
           .insert(members)
           .values({
@@ -1546,8 +1547,8 @@ export const gymRouter = router({
     .mutation(async ({ input, ctx }) => {
       const db = await dbRequired();
       const rawLookup = input.lookup.trim();
-      // Badges printed before the Fit Crush rename carry the SWAN| prefix.
-      const lookup = rawLookup.replace(/^(FITCRUSH|SWAN)\|/, "");
+      // Badges printed under the earlier Fit Crush / Swan names still scan.
+      const lookup = rawLookup.replace(QR_PREFIX_PATTERN, "");
       const member = await getMemberByCodeOrId(lookup).catch(error => {
         throw new TRPCError({
           code: "BAD_REQUEST",

@@ -2,7 +2,8 @@
 // machine sends it: green (welcome), amber (renew soon) or red (blocked: renew & pay).
 
 import { useEffect, useRef, useState } from "react";
-import { DoorOpen, Volume2, VolumeX, Zap } from "lucide-react";
+import { BRAND } from "@shared/brand";
+import { DoorOpen, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "../../../server/routers";
@@ -119,9 +120,9 @@ export default function Gate() {
       <header className="bio-gate-top">
         <div className="bio-gate-brand">
           <span className="brand-symbol" aria-hidden="true">
-            <Zap size={19} strokeWidth={2.4} />
+            <img src={BRAND.mark} alt="" />
           </span>
-          <strong>FIT CRUSH</strong>
+          <strong>{BRAND.shortName}</strong>
           <small>ENTRANCE</small>
         </div>
         <div className="bio-gate-meta">
@@ -197,7 +198,7 @@ export default function Gate() {
             </>
           ) : (
             <>
-              <h1 className="bio-gate-idle">CRUSH YOUR LIMITS</h1>
+              <h1 className="bio-gate-idle">{BRAND.tagline}</h1>
               <p>Place your finger on the machine.</p>
             </>
           )}

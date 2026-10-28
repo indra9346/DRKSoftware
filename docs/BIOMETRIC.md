@@ -3,7 +3,7 @@
 > **On-site set-up for Gowda** (machine, door lock, network, tests): [GOWDA_MACHINE_SETUP.md](GOWDA_MACHINE_SETUP.md).
 > **Database and hosting** (Supabase, settings, go-live): [SETUP.md](SETUP.md). This page is the full reference.
 
-Fit Crush's entrance machine is an eSSL fingerprint terminal (ZKTeco-made). It now works with this
+DRK Fitness Gym's entrance machine is an eSSL fingerprint terminal (ZKTeco-made). It now works with this
 app over eSSL's **ADMS / "Cloud Server"** connection (ZKTeco *Attendance PUSH protocol 2.4.1*).
 
 - **A thumb punch becomes the normal check-in** (method "Fingerprint") within 1–2 seconds. Every
@@ -42,12 +42,12 @@ Server Port = 443, HTTPS ON. Save and restart the machine.
 **B. No HTTPS (most eSSL units).** Run the small bridge in `bridge/` on the front-desk PC. It
 relays the machine's plain-HTTP traffic to the app over HTTPS.
 
-1. Install Node.js 20 LTS on the PC and copy the `bridge` folder (e.g. to `C:\fitcrush-bridge`).
-2. Edit `start-bridge.cmd` and set `FITCRUSH_URL` to the app's address. Double-click it; it prints
+1. Install Node.js 20 LTS on the PC and copy the `bridge` folder (e.g. to `C:\gym-bridge`).
+2. Edit `start-bridge.cmd` and set `GYM_SOFTWARE_URL` to the app's address. Double-click it; it prints
    the PC's address, e.g. `192.168.1.20`.
 3. Allow the port through Windows Firewall (run once as administrator):
    ```bat
-   netsh advfirewall firewall add rule name="Fit Crush bridge" dir=in action=allow protocol=TCP localport=8081
+   netsh advfirewall firewall add rule name="DRK Fitness Gym bridge" dir=in action=allow protocol=TCP localport=8081
    ```
 4. Give the PC a fixed address on the router (DHCP reservation).
 5. Start the bridge with Windows: press Win+R, type `shell:startup`, and put a shortcut to
@@ -67,7 +67,7 @@ The machine appears on **Fingerprint machine** as *Waiting for approval*.
 ## 3. Link the members
 
 The machine knows people by a number (its *User ID*); the app uses member codes like
-`SW-AB12CD34`. Link them once:
+`DRK-AB12CD34`. Link them once:
 
 - **People already on the machine.** On **Fingerprint machine → Users on machine**, pick the member
   for each User ID. Matching names are pre-selected. Leave trainers, the owner and old users
@@ -127,7 +127,7 @@ renew at the front desk."*
 ## Automatic WhatsApp (optional)
 
 Set `WHATSAPP_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID` (Meta WhatsApp Business Cloud API), plus an
-approved template `fitcrush_alert` whose body is `Hello from Fit Crush. {{1}}`. Pending alerts
+approved template `gym_alert` whose body is `Hello from DRK Fitness Gym. {{1}}`. Pending alerts
 are then sent by the daily job instead of by staff. Meta charges per message.
 `WHATSAPP_TEMPLATE` and `WHATSAPP_TEMPLATE_LANG` override the template name and language.
 

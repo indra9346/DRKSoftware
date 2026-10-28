@@ -73,7 +73,7 @@ for (const [index, [name, planIndex, daysAgo, paidFully, visits]] of roster.entr
   const startDate = addDays(today, -daysAgo);
   const endDate = addDays(startDate, plan.durationDays - 1);
   const [memberRow] = await db.insert(members).values({
-    memberCode: `SW-DEV${String(index + 1).padStart(4, "0")}`,
+    memberCode: `DRK-DEV${String(index + 1).padStart(4, "0")}`,
     name,
     phone: `+91 90000 ${String(10001 + index)}`,
     email: `${name.split(" ")[0].toLowerCase()}@example.com`,
