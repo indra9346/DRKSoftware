@@ -7,7 +7,7 @@ import path from "path";
 import pg from "pg";
 import { fileURLToPath } from "url";
 import { connectionOptions } from "../db";
-import { localAuthEnabled } from "./env";
+import { demoModeEnabled, jwtSecret, localAuthEnabled } from "./env";
 
 export const MIN_JWT_SECRET_LENGTH = 32;
 // Drizzle records applied migrations here (its default for PostgreSQL).
@@ -133,8 +133,10 @@ export async function runMigrations(
 /** Settings problems that stop a self-hosted server from starting safely. */
 export function configProblems(env: NodeJS.ProcessEnv = process.env): string[] {
   const problems: string[] = [];
-  if (!env.DATABASE_URL) problems.push("DATABASE_URL is not set.");
-  else {
+  // Demo mode runs on an in-memory database when no address is given.
+  if (!env.DATABASE_URL) {
+    if (!demoModeEnabled(env)) problems.push("DATABASE_URL is not set.");
+  } else {
     try {
       const url = new URL(env.DATABASE_URL);
       if (url.protocol !== "postgres:" && url.protocol !== "postgresql:")
@@ -156,7 +158,7 @@ export function configProblems(env: NodeJS.ProcessEnv = process.env): string[] {
     }
   }
   if (localAuthEnabled(env)) {
-    const secret = env.JWT_SECRET || env.MANUS_JWT_SECRET || "";
+    const secret = jwtSecret(env);
     if (secret.length < MIN_JWT_SECRET_LENGTH)
       problems.push(
         `JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} random characters.`

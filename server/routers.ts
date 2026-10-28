@@ -5,7 +5,8 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { staffInvites, users } from "../drizzle/schema";
 import { getSessionCookieOptions } from "./_core/cookies";
-import { localAuthEnabled } from "./_core/env";
+import { isDemoLogin } from "@shared/demo";
+import { demoModeEnabled, localAuthEnabled } from "./_core/env";
 import {
   findCredentialByOpenId,
   issueSessionCookie,
@@ -30,6 +31,15 @@ const requireLocalAuth = () => {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
       message: "Passwords are managed by the sign-in provider on this install.",
+    });
+};
+// Everyone viewing the demo shares these logins, so nobody may change their passwords.
+const keepDemoLogin = (email: string) => {
+  if (demoModeEnabled() && isDemoLogin(email))
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "Demo logins can't be changed. Add a new staff member to try passwords.",
     });
 };
 const badPassword = (password: string) => {
@@ -72,6 +82,7 @@ export const appRouter = router({
             code: "BAD_REQUEST",
             message: "Your current password is not correct.",
           });
+        keepDemoLogin(credential.email);
         badPassword(input.newPassword);
         await setPassword(credential.email, input.newPassword, ctx.user.id);
         // Other devices are signed out by the change; keep this one signed in.
@@ -101,6 +112,7 @@ export const appRouter = router({
             message: "Gym database is unavailable.",
           });
         const email = normalizeEmail(input.email);
+        keepDemoLogin(email);
         if (ctx.user.email && normalizeEmail(ctx.user.email) === email)
           throw new TRPCError({
             code: "BAD_REQUEST",

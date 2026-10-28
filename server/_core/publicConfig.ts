@@ -1,5 +1,5 @@
 import { devLoginEnabled } from "./devLoginGuard";
-import { localAuthEnabled } from "./env";
+import { demoModeEnabled, localAuthEnabled } from "./env";
 
 // Only these public values may reach the browser. Never serialize process.env.
 export function publicPlatformConfig(env: NodeJS.ProcessEnv = process.env) {
@@ -11,6 +11,8 @@ export function publicPlatformConfig(env: NodeJS.ProcessEnv = process.env) {
     devLogin: devLoginEnabled(env),
     // Self-hosted: show the email + password form instead of "Sign in with Manus".
     localLogin: localAuthEnabled(env),
+    // Demo mode: the sign-in page lists the demo logins (sample data only).
+    demoMode: demoModeEnabled(env),
   };
 }
 

@@ -23,7 +23,7 @@ import {
   memberships,
   payments,
 } from "../../drizzle/schema";
-import { getDb, getGymSettings } from "../db";
+import { affectedRows, getDb, getGymSettings } from "../db";
 import { BRAND } from "@shared/brand";
 import {
   cmdDeleteFingers,
@@ -830,7 +830,7 @@ export async function recordPunch(
       duplicate,
     })
       .onConflictDoNothing();
-  if (!inserted.rowCount || !entry || !state) return;
+  if (!affectedRows(inserted) || !entry || !state) return;
 
   const recentDay = punch.date >= addDays(todayIST(), -1);
   if (state.allowed && !duplicate && recentDay) {
@@ -964,7 +964,7 @@ export async function raiseAlert(
       error: phone ? null : "No valid mobile number",
     })
       .onConflictDoNothing();
-  return (res.rowCount ?? 0) > 0;
+  return affectedRows(res) > 0;
 }
 
 /** Welcome / renewal / receipt messages for plans and payments added in the last 3 days. */
@@ -1151,7 +1151,7 @@ export async function runDailyJobs(db: Db, force = false) {
       ? sql`update gym_biometric_config set "lastDailyRun" = ${today} where id = 1`
       : sql`update gym_biometric_config set "lastDailyRun" = ${today} where id = 1 and ("lastDailyRun" is null or "lastDailyRun" <> ${today})`
   );
-  if (!force && !claim.rowCount)
+  if (!force && !affectedRows(claim))
     return { ran: false as const, today };
   const sync = await reconcileDevices(db, { reason: `daily ${today}` });
   const alerts = await runAlerts(db, today);

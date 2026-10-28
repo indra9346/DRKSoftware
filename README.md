@@ -2,6 +2,26 @@
 
 DRK Fitness Gym's single-branch gym operations web app built on React, Express, tRPC, Drizzle and PostgreSQL (Supabase). It covers members, plans and renewals, attendance, manual receipts, training, expenses, owner reports, retention follow-up and member self-service. The app uses India Standard Time (Asia/Kolkata) and INR.
 
+## Demo on Vercel (for showing the software)
+
+Import this repository on vercel.com → **Add New → Project** → **Deploy**. No settings are
+needed: `vercel.json` builds the app, serves the screens and runs the API as a function. With no
+`DATABASE_URL` on Vercel the app starts in **demo mode**: an in-memory PostgreSQL filled with
+sample DRK Fitness Gym data (members, plans, payments, check-ins, a fingerprint machine with
+today's punches, WhatsApp alerts), rebuilt on every start. The sign-in page lists the demo logins:
+
+| Role | Email | Password |
+|---|---|---|
+| Owner | owner@drkfitness.demo | Owner@123 |
+| Front desk | desk@drkfitness.demo | Desk@123 |
+| Trainer | trainer@drkfitness.demo | Trainer@123 |
+| Member | member@drkfitness.demo | Member@123 |
+
+Changes made during a demo are not kept (the data resets when the function restarts), and the
+demo logins cannot be changed. Locally: `DEMO_MODE=true pnpm dev`. For the real gym, use the
+set-up below (Supabase + Cloudflare); demo mode never turns on when `DATABASE_URL` is set unless
+`DEMO_MODE=true`.
+
 ## Going live (Supabase + Cloudflare)
 
 The self-hosted set-up uses a Supabase PostgreSQL database, the app on Cloudflare (a Worker in front of a Cloudflare Container built from the `Dockerfile`; `wrangler.jsonc`, deployed by `.github/workflows/deploy-cloudflare.yml`) with the domain on Cloudflare, `render.yaml` as an alternative host, and email + password sign-in (`AUTH_MODE=local`). Step by step, including what to buy, every setting and the checks to run: [docs/SETUP.md](docs/SETUP.md). The settings template is [.env.example](.env.example).

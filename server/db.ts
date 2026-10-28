@@ -22,7 +22,8 @@ import {
   workouts,
   InsertUser,
 } from "../drizzle/schema";
-import { ENV } from "./_core/env";
+import { demoModeEnabled, ENV } from "./_core/env";
+import { createDemoDatabase } from "./demo/database";
 import { BRAND } from "@shared/brand";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
@@ -108,8 +109,18 @@ export function isUniqueViolation(error: unknown): boolean {
   return false;
 }
 
+/** Rows changed by an insert/update/delete, from either driver (pg: rowCount, PGlite: affectedRows). */
+export function affectedRows(result: unknown): number {
+  const r = result as { rowCount?: number | null; affectedRows?: number };
+  return Number(r.rowCount ?? r.affectedRows ?? 0);
+}
+
 let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() {
+  // Demo mode without a database address: an in-memory PostgreSQL (server/demo/database.ts).
+  // Same queries and SQL; only the driver object differs, hence the cast.
+  if (!_db && !process.env.DATABASE_URL && demoModeEnabled())
+    _db = createDemoDatabase() as unknown as ReturnType<typeof drizzle>;
   if (!_db && process.env.DATABASE_URL) {
     try {
       _db = drizzle(createPool(process.env.DATABASE_URL));

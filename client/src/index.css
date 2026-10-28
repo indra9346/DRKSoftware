@@ -340,6 +340,37 @@ textarea {
 .password-login .error-copy {
   margin: 0;
 }
+.demo-logins {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border);
+}
+.demo-logins .eyebrow {
+  margin: 0 0 2px;
+}
+.demo-login {
+  display: grid;
+  gap: 2px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--secondary);
+  color: var(--foreground);
+  text-align: left;
+}
+.demo-login:hover:not(:disabled) {
+  border-color: var(--brand);
+}
+.demo-login strong {
+  font-size: 13px;
+}
+.demo-login span {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  word-break: break-all;
+}
 .user-avatar,
 .topbar-avatar {
   display: grid;

@@ -31,6 +31,7 @@ import {
   recordPaymentInTransaction,
   todayIST,
   isUniqueViolation,
+  affectedRows,
 } from "./db";
 import {
   adminProcedure,
@@ -1731,7 +1732,7 @@ export const gymRouter = router({
               sql`${attendance.checkedOutAt} IS NULL`
             )
           );
-        if (!updated.rowCount)
+        if (!affectedRows(updated))
           throw new TRPCError({
             code: "CONFLICT",
             message: "This gym visit has already been checked out.",

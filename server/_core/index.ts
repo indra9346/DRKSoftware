@@ -1,56 +1,10 @@
-import "dotenv/config";
-import express from "express";
 import { createServer } from "http";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
-import { registerDevLoginRoutes } from "./devLogin";
-import { localAuthEnabled } from "./env";
-import { ensureFirstOwner, registerLocalAuthRoutes } from "./localAuth";
-import { configProblems, runMigrations, trustProxySetting } from "./selfHost";
-import { publicPlatformScript } from "./publicConfig";
-import { appRouter } from "../routers";
-import { registerIclockRoutes } from "../biometric/iclock";
-import { createContext } from "./context";
+import { createApp } from "./app";
 import { serveStatic } from "./static";
 
 async function startServer() {
-  const localAuth = localAuthEnabled();
-  if (localAuth) {
-    const problems = configProblems();
-    if (problems.length) throw new Error(`Fix these settings first:\n- ${problems.join("\n- ")}`);
-  }
-  if (process.env.AUTO_MIGRATE === "true" && process.env.DATABASE_URL) {
-    const applied = await runMigrations(process.env.DATABASE_URL);
-    console.log(applied.length ? `[Setup] Database updated: ${applied.join(", ")}` : "[Setup] Database is up to date.");
-  }
-  if (localAuth) await ensureFirstOwner();
-
-  const app = express();
+  const app = await createApp();
   const server = createServer(app);
-  // Behind the host's HTTPS proxy: use the real visitor IP for login limits.
-  if (localAuth) app.set("trust proxy", trustProxySetting());
-  // Fingerprint machine (eSSL ADMS). Before the body parsers: it posts plain text.
-  registerIclockRoutes(app);
-  // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
-  app.get("/api/platform/config.js", (_req, res) => {
-    res.set("Cache-Control", "no-store").type("application/javascript").send(publicPlatformScript());
-  });
-  if (localAuth) registerLocalAuthRoutes(app);
-  else registerOAuthRoutes(app);
-  registerDevLoginRoutes(app);
-  // tRPC API
-  app.use(
-    "/api/trpc",
-    createExpressMiddleware({
-      router: appRouter,
-      createContext,
-    })
-  );
-  // Unmatched API calls must fail loudly, not fall through to the SPA page.
-  app.use("/api", (_req, res) => res.status(404).json({ error: "Not found" }));
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     // Loaded only here, so production never needs Vite installed.

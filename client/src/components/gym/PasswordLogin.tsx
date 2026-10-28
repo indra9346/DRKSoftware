@@ -4,6 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { KeyRound, LoaderCircle, LogIn } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { DEMO_LOGINS } from "@shared/demo";
 import { Field, Modal } from "./Modal";
 
 const MIN_PASSWORD = 8;
@@ -17,71 +18,94 @@ function nextPath() {
 export function PasswordLogin() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const demo = window.__MANUS_CONFIG__?.demoMode === true;
+  const signIn = async (email: string, password: string) => {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      if (response.ok) {
+        window.location.href = nextPath();
+        return;
+      }
+      const body = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      setError(body?.error ?? "Sign-in failed. Try again.");
+    } catch {
+      setError("Cannot reach the gym server. Check the internet connection.");
+    }
+    setBusy(false);
+  };
   return (
-    <form
-      className="password-login"
-      onSubmit={async event => {
-        event.preventDefault();
-        const form = new FormData(event.currentTarget);
-        setBusy(true);
-        setError("");
-        try {
-          const response = await fetch("/api/auth/login", {
-            method: "POST",
-            credentials: "include",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              email: String(form.get("email") ?? ""),
-              password: String(form.get("password") ?? ""),
-            }),
-          });
-          if (response.ok) {
-            window.location.href = nextPath();
-            return;
-          }
-          const body = (await response.json().catch(() => null)) as {
-            error?: string;
-          } | null;
-          setError(body?.error ?? "Sign-in failed. Try again.");
-        } catch {
-          setError(
-            "Cannot reach the gym server. Check the internet connection."
+    <>
+      <form
+        className="password-login"
+        onSubmit={event => {
+          event.preventDefault();
+          const form = new FormData(event.currentTarget);
+          void signIn(
+            String(form.get("email") ?? ""),
+            String(form.get("password") ?? "")
           );
-        }
-        setBusy(false);
-      }}
-    >
-      <Field label="Email">
-        <input
-          type="email"
-          name="email"
-          autoComplete="username"
-          required
-          autoFocus
-        />
-      </Field>
-      <Field label="Password">
-        <input
-          type="password"
-          name="password"
-          autoComplete="current-password"
-          required
-        />
-      </Field>
-      {error && (
-        <p className="error-copy" role="alert">
-          {error}
-        </p>
-      )}
-      <button className="button button-primary button-wide" disabled={busy}>
-        {busy ? (
-          <LoaderCircle className="spin" size={17} />
-        ) : (
-          <LogIn size={17} />
+        }}
+      >
+        <Field label="Email">
+          <input
+            type="email"
+            name="email"
+            autoComplete="username"
+            required
+            autoFocus={!demo}
+          />
+        </Field>
+        <Field label="Password">
+          <input
+            type="password"
+            name="password"
+            autoComplete="current-password"
+            required
+          />
+        </Field>
+        {error && (
+          <p className="error-copy" role="alert">
+            {error}
+          </p>
         )}
-        Sign in
-      </button>
-    </form>
+        <button className="button button-primary button-wide" disabled={busy}>
+          {busy ? (
+            <LoaderCircle className="spin" size={17} />
+          ) : (
+            <LogIn size={17} />
+          )}
+          Sign in
+        </button>
+      </form>
+      {demo && (
+        <div className="demo-logins">
+          <p className="eyebrow">DEMO · SAMPLE DATA · TAP TO SIGN IN</p>
+          {DEMO_LOGINS.map(login => (
+            <button
+              key={login.email}
+              type="button"
+              className="demo-login"
+              disabled={busy}
+              onClick={() => void signIn(login.email, login.password)}
+            >
+              <strong>{login.role}</strong>
+              <span>
+                {login.email} · {login.password}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 

@@ -13,7 +13,7 @@ import {
 } from "../../drizzle/schema";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
-import { localAuthEnabled } from "./env";
+import { demoModeEnabled, localAuthEnabled } from "./env";
 import { sdk } from "./sdk";
 
 export const MIN_PASSWORD_LENGTH = 8;
@@ -283,7 +283,8 @@ export async function signInWithPassword(
   if (!(await verifyPassword(passwordInput, credential.passwordHash))) {
     noteIpFailure(ip);
     const failures = credential.failedAttempts + 1;
-    const lock = failures >= LOCK_AFTER_FAILURES;
+    // Demo logins are shared by everyone viewing the demo, so they are never paused.
+    const lock = failures >= LOCK_AFTER_FAILURES && !demoModeEnabled();
     await database
       .update(loginCredentials)
       .set({

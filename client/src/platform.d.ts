@@ -5,6 +5,7 @@ declare global {
       projectId: string; oauthPortalUrl: string; apiUrl: string; apiBrowserKey: string;
       devLogin?: boolean;
       localLogin?: boolean;
+      demoMode?: boolean;
     };
   }
 }
