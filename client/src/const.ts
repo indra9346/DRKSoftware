@@ -13,6 +13,13 @@ export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 // with "invalid oauth state". It returns void by design, so there is no URL to
 // stash across renders.
 export const startLogin = () => {
+  // Self-hosted installs: the email + password form lives on the home page.
+  if (window.__MANUS_CONFIG__?.localLogin) {
+    if (window.location.pathname === "/") return;
+    const next = window.location.pathname + window.location.search;
+    window.location.href = `/?next=${encodeURIComponent(next)}`;
+    return;
+  }
   const oauthPortalUrl = window.__MANUS_CONFIG__?.oauthPortalUrl;
   const appId = window.__MANUS_CONFIG__?.projectId;
   if (!oauthPortalUrl || !appId) throw new Error("Manus login is not configured");

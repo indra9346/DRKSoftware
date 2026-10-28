@@ -5,6 +5,11 @@ import { Field as FormField } from "@/components/gym/Modal";
 import { QrScanner } from "@/components/gym/QrScanner";
 import { AlertsView, FingerprintModal, MachineView } from "@/components/gym/Biometric";
 import {
+  ChangePasswordModal,
+  PasswordLogin,
+  SetPasswordModal,
+} from "@/components/gym/PasswordLogin";
+import {
   csvExport,
   daysBetween,
   inr,
@@ -243,6 +248,9 @@ export default function Home() {
   const isAdmin = isAdminRole(role);
   const isFrontDesk =
     role === "owner" || role === "admin" || role === "receptionist";
+  // Self-hosted installs sign in with email + password instead of Manus.
+  const localLogin = window.__MANUS_CONFIG__?.localLogin === true;
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [view, setView] = useState<GymView>(
     role === "member" ? "portal" : "dashboard"
   );
@@ -270,6 +278,10 @@ export default function Home() {
     retry: false,
   });
   const [modal, setModal] = useState<ModalState>(null);
+  const [passwordFor, setPasswordFor] = useState<{
+    email: string;
+    name?: string | null;
+  } | null>(null);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<
     Boot["plans"][number] | null
@@ -343,8 +355,12 @@ export default function Home() {
   const freezeMutation = trpc.gym.freezeMembership.useMutation();
   const reactivateMutation = trpc.gym.reactivateMembership.useMutation();
   const cancelInvite = trpc.gym.cancelInvite.useMutation();
+  const setLoginPassword = trpc.auth.setPasswordFor.useMutation();
 
   const members = data?.members ?? [];
+  const passwordEmails = new Set(
+    (data?.passwordEmails ?? []).map(email => email.toLowerCase())
+  );
   const plans = data?.plans ?? [];
   const memberships = data?.memberships ?? [];
   const attendance = data?.attendance ?? [];
@@ -532,17 +548,29 @@ export default function Home() {
             Memberships, check-ins and daily collections—together in one clear
             view.
           </p>
-          <button
-            className="button button-primary button-wide"
-            onClick={() => startLogin()}
-          >
-            <LogIn size={17} />
-            Sign in with Manus
-          </button>
-          <p className="login-note">
-            Secure account sign-in · Role access is managed by your gym
-            administrator.
-          </p>
+          {localLogin ? (
+            <>
+              <PasswordLogin />
+              <p className="login-note">
+                Forgot your password? Ask the gym owner to reset it under Team
+                &amp; access.
+              </p>
+            </>
+          ) : (
+            <>
+              <button
+                className="button button-primary button-wide"
+                onClick={() => startLogin()}
+              >
+                <LogIn size={17} />
+                Sign in with Manus
+              </button>
+              <p className="login-note">
+                Secure account sign-in · Role access is managed by your gym
+                administrator.
+              </p>
+            </>
+          )}
           {window.__MANUS_CONFIG__?.devLogin && (
             <form className="dev-login" method="post" action="/api/dev/login">
               <p className="eyebrow">LOCAL DEV LOGIN · SAMPLE DATA ONLY</p>
@@ -704,6 +732,9 @@ export default function Home() {
       active={view}
       onNavigate={setView}
       onLogout={startLogout}
+      onChangePassword={
+        localLogin ? () => setChangePasswordOpen(true) : undefined
+      }
     >
       {data.limitsExceeded.length > 0 && (
         <div className="overflow-warning" role="alert">
@@ -2411,9 +2442,9 @@ export default function Home() {
           <div className="info-strip">
             <ShieldCheck size={16} />
             <span>
-              Staff use secure Manus account sign-in. Password resets are
-              managed by the identity provider; this app controls gym roles and
-              active status.
+              {localLogin
+                ? "Each person signs in with their email and a password you set here. Reset a forgotten password with Set password; deactivating an account blocks its sign-in."
+                : "Staff use secure Manus account sign-in. Password resets are managed by the identity provider; this app controls gym roles and active status."}
             </span>
           </div>
           <section className="panel directory-panel">
@@ -2489,6 +2520,22 @@ export default function Home() {
                           : "Never"}
                       </td>
                       <td>
+                        <div className="row-actions">
+                        {localLogin && staff.email && staff.id !== user.id && (
+                          <button
+                            className="text-button"
+                            onClick={() =>
+                              setPasswordFor({
+                                email: staff.email!,
+                                name: staff.name,
+                              })
+                            }
+                          >
+                            {passwordEmails.has(staff.email.toLowerCase())
+                              ? "Reset password"
+                              : "Set password"}
+                          </button>
+                        )}
                         <button
                           className="text-button"
                           onClick={() =>
@@ -2516,6 +2563,7 @@ export default function Home() {
                         >
                           {staff.active ? "Deactivate" : "Activate"}
                         </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -2559,6 +2607,22 @@ export default function Home() {
                           )?.name ?? "—"}
                         </td>
                         <td>
+                          <div className="row-actions">
+                          {localLogin && (
+                            <button
+                              className="text-button"
+                              onClick={() =>
+                                setPasswordFor({
+                                  email: item.email,
+                                  name: item.name,
+                                })
+                              }
+                            >
+                              {passwordEmails.has(item.email.toLowerCase())
+                                ? "Reset password"
+                                : "Set password"}
+                            </button>
+                          )}
                           <button
                             className="text-button danger-link"
                             onClick={() =>
@@ -2570,6 +2634,7 @@ export default function Home() {
                           >
                             Remove
                           </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -4119,6 +4184,18 @@ export default function Home() {
         </Modal>
       )}
 
+      {passwordFor && (
+        <SetPasswordModal
+          email={passwordFor.email}
+          name={passwordFor.name}
+          onClose={() => setPasswordFor(null)}
+          onDone={refresh}
+        />
+      )}
+      {changePasswordOpen && (
+        <ChangePasswordModal onClose={() => setChangePasswordOpen(false)} />
+      )}
+
       {modal === "invite" && (
         <Modal
           open
@@ -4144,12 +4221,28 @@ export default function Home() {
                     : null,
                 },
                 {
-                  onSuccess: result => {
-                    toast.success(
-                      result.status === "assigned"
-                        ? "Gym role assigned"
-                        : "Invitation saved. Share the sign-in details with this person."
-                    );
+                  onSuccess: async result => {
+                    const password = String(form.get("password") || "");
+                    if (localLogin && password) {
+                      try {
+                        await setLoginPassword.mutateAsync({
+                          email: String(form.get("email")),
+                          password,
+                        });
+                        toast.success(
+                          "Account saved. They can sign in with this email and password."
+                        );
+                      } catch (error) {
+                        toast.error(
+                          `Account saved, but not the password: ${error instanceof Error ? error.message : "try Set password"}`
+                        );
+                      }
+                    } else
+                      toast.success(
+                        result.status === "assigned"
+                          ? "Gym role assigned"
+                          : "Invitation saved. Share the sign-in details with this person."
+                      );
                     refresh();
                     setModal(null);
                   },
@@ -4181,9 +4274,23 @@ export default function Home() {
                 ))}
               </select>
             </Field>
+            {localLogin && (
+              <Field
+                label="Password"
+                hint="At least 8 characters. Tell them in person; they can change it after signing in."
+              >
+                <input
+                  type="text"
+                  name="password"
+                  autoComplete="off"
+                  minLength={8}
+                />
+              </Field>
+            )}
             <p className="field-hint form-section-span">
-              No email or password is sent by this application. The account
-              holder signs in with their Manus identity provider.
+              {localLogin
+                ? "No email is sent. They sign in on this site with this email and the password above. You can set or reset it later with Set password."
+                : "No email or password is sent by this application. The account holder signs in with their Manus identity provider."}
             </p>
             <div className="form-actions form-section-span">
               <button

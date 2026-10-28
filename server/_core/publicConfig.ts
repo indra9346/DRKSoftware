@@ -1,4 +1,5 @@
 import { devLoginEnabled } from "./devLoginGuard";
+import { localAuthEnabled } from "./env";
 
 // Only these public values may reach the browser. Never serialize process.env.
 export function publicPlatformConfig(env: NodeJS.ProcessEnv = process.env) {
@@ -8,6 +9,8 @@ export function publicPlatformConfig(env: NodeJS.ProcessEnv = process.env) {
     apiUrl: env.MANUS_API_URL ?? "",
     apiBrowserKey: env.MANUS_API_BROWSER_KEY ?? "",
     devLogin: devLoginEnabled(env),
+    // Self-hosted: show the email + password form instead of "Sign in with Manus".
+    localLogin: localAuthEnabled(env),
   };
 }
 

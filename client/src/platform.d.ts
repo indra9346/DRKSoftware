@@ -4,6 +4,7 @@ declare global {
     __MANUS_CONFIG__?: {
       projectId: string; oauthPortalUrl: string; apiUrl: string; apiBrowserKey: string;
       devLogin?: boolean;
+      localLogin?: boolean;
     };
   }
 }

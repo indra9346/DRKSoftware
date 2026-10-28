@@ -7,6 +7,7 @@ import {
   Dumbbell,
   Fingerprint,
   LayoutDashboard,
+  KeyRound,
   LogOut,
   MessageCircle,
   Menu,
@@ -123,6 +124,7 @@ export function GymShell({
   active,
   onNavigate,
   onLogout,
+  onChangePassword,
   children,
 }: {
   role: GymRole;
@@ -131,6 +133,8 @@ export function GymShell({
   active: View;
   onNavigate: (view: View) => void;
   onLogout: () => void;
+  // Self-hosted installs only (email + password sign-in).
+  onChangePassword?: () => void;
   children: ReactNode;
 }) {
   const [open, setOpen] = React.useState(false);
@@ -198,6 +202,12 @@ export function GymShell({
               </small>
             </div>
           </div>
+          {onChangePassword && (
+            <button className="sidebar-password" onClick={onChangePassword}>
+              <KeyRound size={14} />
+              Change password
+            </button>
+          )}
           <button className="sidebar-user" onClick={onLogout}>
             <span className="user-avatar">
               {userName.trim().charAt(0).toUpperCase() || "F"}

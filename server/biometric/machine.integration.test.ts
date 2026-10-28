@@ -1,8 +1,8 @@
-// End-to-end over the real /iclock endpoints and MySQL: the test plays the eSSL fingerprint
+// End-to-end over the real /iclock endpoints and PostgreSQL: the test plays the eSSL fingerprint
 // machine (handshake, uploads, command polling, results) against the gym software.
 // Runs only with BIOMETRIC_TEST_DATABASE_URL pointing at a database whose name ends in "_test";
 // all tables in it are dropped first.
-//   BIOMETRIC_TEST_DATABASE_URL=mysql://root@127.0.0.1:3407/fitcrush_test pnpm test
+//   BIOMETRIC_TEST_DATABASE_URL=postgres://postgres@127.0.0.1:5544/fitcrush_test pnpm test
 
 import express from "express";
 import type { AddressInfo } from "net";
@@ -13,7 +13,7 @@ const safe =
   !!url &&
   /_test(\?|$)/.test(new URL(url).pathname + (new URL(url).search ? "?" : ""));
 
-describe.skipIf(!safe)("fingerprint machine over ADMS (MySQL)", () => {
+describe.skipIf(!safe)("fingerprint machine over ADMS (PostgreSQL)", () => {
   const SN = "ESSLX990TEST1";
   let base = "";
   let close: () => void = () => {};
@@ -62,19 +62,14 @@ describe.skipIf(!safe)("fingerprint machine over ADMS (MySQL)", () => {
 
   beforeAll(async () => {
     process.env.DATABASE_URL = url;
-    const { drizzle } = await import("drizzle-orm/mysql2");
-    const { migrate } = await import("drizzle-orm/mysql2/migrator");
-    const { sql } = await import("drizzle-orm");
-    const raw = drizzle(url!);
-    const tables = (
-      await raw.execute(
-        sql`select table_name as t from information_schema.tables where table_schema = database()`
-      )
-    )[0] as unknown as { t: string }[];
-    await raw.execute(sql`set foreign_key_checks = 0`);
-    for (const { t } of tables)
-      await raw.execute(sql.raw(`drop table \`${t}\``));
-    await migrate(raw, { migrationsFolder: "drizzle" });
+    // A clean database each run: drop and recreate the app's schema, then migrate.
+    const { runMigrations, openClient } = await import("../_core/selfHost");
+    const admin = await openClient(url!);
+    await admin.query("drop schema if exists public cascade");
+    await admin.query("drop schema if exists drizzle cascade");
+    await admin.query("create schema public");
+    await admin.end();
+    await runMigrations(url!);
     engine = await import("./engine");
     schema = await import("../../drizzle/schema");
     rules = await import("./rules");
@@ -94,11 +89,13 @@ describe.skipIf(!safe)("fingerprint machine over ADMS (MySQL)", () => {
         name: "Ravi Kumar",
         phone: "9876543210",
         joiningDate: today,
-      });
+      })
+      .returning({ insertId: schema.members.id });
     memberId = Number(m.insertId);
     const [p] = await db
       .insert(schema.plans)
-      .values({ name: "Monthly", durationDays: 30, price: 1500 });
+      .values({ name: "Monthly", durationDays: 30, price: 1500 })
+      .returning({ insertId: schema.plans.id });
     const [ms] = await db
       .insert(schema.memberships)
       .values({
@@ -109,7 +106,8 @@ describe.skipIf(!safe)("fingerprint machine over ADMS (MySQL)", () => {
         planName: "Monthly",
         planPrice: 1500,
         createdBy: 1,
-      });
+      })
+      .returning({ insertId: schema.memberships.id });
     await db
       .insert(schema.payments)
       .values({
@@ -270,7 +268,8 @@ describe.skipIf(!safe)("fingerprint machine over ADMS (MySQL)", () => {
         name: "Owner",
         phone: "9000000001",
         joiningDate: today,
-      });
+      })
+      .returning({ insertId: schema.members.id });
     await engine.linkMember(db, Number(m.insertId), 1, 1);
     const cmds = await poll();
     expect(cmds.map(c => c.cmd)).toEqual([
@@ -304,7 +303,8 @@ describe.skipIf(!safe)("fingerprint machine over ADMS (MySQL)", () => {
         name: "Sneha Reddy",
         phone: "9876500000",
         joiningDate: today,
-      });
+      })
+      .returning({ insertId: schema.members.id });
     const id = Number(m.insertId);
     const [plan] = await db.select().from(schema.plans);
     await db

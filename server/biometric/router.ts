@@ -78,20 +78,20 @@ export const biometricRouter = router({
     const d = await db();
     const machines = await d.select().from(devices).orderBy(devices.createdAt);
     const counts = (
-      await d.execute(sql`
+      await d.execute<{
+        sn: string;
+        queued: number;
+        failed: number;
+        users: number;
+        withFingers: number;
+      }>(sql`
         select d.sn,
-          (select count(*) from gym_device_commands c where c.deviceSn = d.sn and c.status in ('queued', 'sent')) as queued,
-          (select count(*) from gym_device_commands c where c.deviceSn = d.sn and c.status = 'failed' and c.createdAt > now() - interval 7 day) as failed,
-          (select count(*) from gym_device_users u where u.deviceSn = d.sn) as users,
-          (select count(*) from gym_device_users u where u.deviceSn = d.sn and u.fingerprints > 0) as withFingers
+          (select count(*)::int from gym_device_commands c where c."deviceSn" = d.sn and c.status in ('queued', 'sent')) as queued,
+          (select count(*)::int from gym_device_commands c where c."deviceSn" = d.sn and c.status = 'failed' and c."createdAt" > now() - interval '7 days') as failed,
+          (select count(*)::int from gym_device_users u where u."deviceSn" = d.sn) as users,
+          (select count(*)::int from gym_device_users u where u."deviceSn" = d.sn and u.fingerprints > 0) as "withFingers"
         from gym_devices d`)
-    )[0] as unknown as {
-      sn: string;
-      queued: number;
-      failed: number;
-      users: number;
-      withFingers: number;
-    }[];
+    ).rows;
     const countBy = new Map(counts.map(c => [c.sn, c]));
     const commands = await d
       .select({
@@ -115,7 +115,7 @@ export const biometricRouter = router({
       .limit(40);
     const settings = await getBiometricSettings(d);
     const linked = await d
-      .select({ n: sql<number>`count(*)` })
+      .select({ n: sql<number>`count(*)::int` })
       .from(biometricMembers);
     const entries = await loadMemberEntries(d, { linkedOnly: true });
     const host = ctx.req.get("x-forwarded-host") ?? ctx.req.get("host") ?? "";
@@ -368,7 +368,7 @@ export const biometricRouter = router({
         .from(devices);
       const [backup] = pin
         ? await d
-            .select({ n: sql<number>`count(*)` })
+            .select({ n: sql<number>`count(*)::int` })
             .from(fingerprintTemplates)
             .where(eq(fingerprintTemplates.pin, pin))
         : [];
@@ -521,9 +521,12 @@ export const biometricRouter = router({
         .orderBy(desc(biometricPunches.id))
         .limit(30);
       const [stats] = (
-        await d.execute(sql`select count(distinct case when allowed then memberId end) as came, sum(case when allowed = 0 and duplicate = 0 then 1 else 0 end) as blocked
-        from gym_biometric_punches where punchDate = ${today}`)
-      )[0] as unknown as { came: number; blocked: number | null }[];
+        await d.execute<{ came: number; blocked: number | null }>(
+          sql`select count(distinct case when allowed then "memberId" end)::int as came,
+            sum(case when allowed = false and duplicate = false then 1 else 0 end)::int as blocked
+          from gym_biometric_punches where "punchDate" = ${today}`
+        )
+      ).rows;
       const machines = await d
         .select({ name: devices.name, lastSeenAt: devices.lastSeenAt })
         .from(devices)
@@ -593,7 +596,7 @@ export const biometricRouter = router({
         .orderBy(desc(memberAlerts.id))
         .limit(300);
       const counts = await d
-        .select({ status: memberAlerts.status, n: sql<number>`count(*)` })
+        .select({ status: memberAlerts.status, n: sql<number>`count(*)::int` })
         .from(memberAlerts)
         .groupBy(memberAlerts.status);
       return {

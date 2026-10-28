@@ -1,1 +1,0 @@
-CREATE INDEX `gym_payments_membership_idx` ON `gym_payments` (`membershipId`);

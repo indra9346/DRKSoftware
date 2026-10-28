@@ -17,6 +17,7 @@ import {
   progressEntries,
   renewalRequests,
   staffInvites,
+  loginCredentials,
   users,
   workouts,
 } from "../drizzle/schema";
@@ -29,6 +30,7 @@ import {
   listPayments,
   recordPaymentInTransaction,
   todayIST,
+  isUniqueViolation,
 } from "./db";
 import {
   adminProcedure,
@@ -36,7 +38,7 @@ import {
   roleProcedure,
   router,
 } from "./_core/trpc";
-import { ENV } from "./_core/env";
+import { ENV, localAuthEnabled } from "./_core/env";
 
 const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const amount = z.number().int().min(0).max(100_000_000);
@@ -235,7 +237,7 @@ export const gymRouter = router({
         ? await db
             .select({
               membershipId: payments.membershipId,
-              amount: sql<number>`COALESCE(SUM(${payments.amount}), 0)`.as(
+              amount: sql<number>`COALESCE(SUM(${payments.amount}), 0)::int`.as(
                 "amount"
               ),
             })
@@ -508,19 +510,19 @@ export const gymRouter = router({
       todayVisitsResult,
     ] = await Promise.all([
       db
-        .select({ count: sql<number>`COUNT(*)` })
+        .select({ count: sql<number>`COUNT(*)::int` })
         .from(members)
         .where(memberScope),
       db
         .select({
-          active: sql<number>`COALESCE(SUM(CASE WHEN ${memberships.status} = 'active' AND ${memberships.startDate} <= ${day} AND ${memberships.endDate} >= ${day} THEN 1 ELSE 0 END), 0)`,
-          expired: sql<number>`COALESCE(SUM(CASE WHEN ${memberships.status} <> 'cancelled' AND ${memberships.endDate} < ${day} THEN 1 ELSE 0 END), 0)`,
+          active: sql<number>`COALESCE(SUM(CASE WHEN ${memberships.status} = 'active' AND ${memberships.startDate} <= ${day} AND ${memberships.endDate} >= ${day} THEN 1 ELSE 0 END), 0)::int`,
+          expired: sql<number>`COALESCE(SUM(CASE WHEN ${memberships.status} <> 'cancelled' AND ${memberships.endDate} < ${day} THEN 1 ELSE 0 END), 0)::int`,
         })
         .from(memberships)
         .innerJoin(members, eq(memberships.memberId, members.id))
         .where(memberScope),
       db
-        .select({ count: sql<number>`COUNT(*)` })
+        .select({ count: sql<number>`COUNT(*)::int` })
         .from(members)
         .where(
           and(
@@ -530,7 +532,7 @@ export const gymRouter = router({
           )
         ),
       db
-        .select({ count: sql<number>`COUNT(*)` })
+        .select({ count: sql<number>`COUNT(*)::int` })
         .from(attendance)
         .innerJoin(members, eq(attendance.memberId, members.id))
         .where(and(eq(attendance.checkInDate, day), memberScope)),
@@ -559,7 +561,7 @@ export const gymRouter = router({
       const postedPaymentsByMembership = db
         .select({
           membershipId: payments.membershipId,
-          amount: sql<number>`COALESCE(SUM(${payments.amount}), 0)`.as(
+          amount: sql<number>`COALESCE(SUM(${payments.amount}), 0)::int`.as(
             "amount"
           ),
         })
@@ -570,14 +572,14 @@ export const gymRouter = router({
       const [collectionTotals, duesTotals, expenseTotals] = await Promise.all([
         db
           .select({
-            today: sql<number>`COALESCE(SUM(CASE WHEN ${payments.recordedAt} >= ${startOfToday(day)} AND ${payments.recordedAt} < ${nextDay} THEN ${payments.amount} ELSE 0 END), 0)`,
-            month: sql<number>`COALESCE(SUM(CASE WHEN ${payments.recordedAt} >= ${monthStart} AND ${payments.recordedAt} < ${startOfToday(nextMonthKey)} THEN ${payments.amount} ELSE 0 END), 0)`,
+            today: sql<number>`COALESCE(SUM(CASE WHEN ${payments.recordedAt} >= ${startOfToday(day)} AND ${payments.recordedAt} < ${nextDay} THEN ${payments.amount} ELSE 0 END), 0)::int`,
+            month: sql<number>`COALESCE(SUM(CASE WHEN ${payments.recordedAt} >= ${monthStart} AND ${payments.recordedAt} < ${startOfToday(nextMonthKey)} THEN ${payments.amount} ELSE 0 END), 0)::int`,
           })
           .from(payments)
           .where(eq(payments.status, "posted")),
         db
           .select({
-            total: sql<number>`COALESCE(SUM(GREATEST(0, ${memberships.planPrice} - ${memberships.discount} - COALESCE(${postedPaymentsByMembership.amount}, 0))), 0)`,
+            total: sql<number>`COALESCE(SUM(GREATEST(0, ${memberships.planPrice} - ${memberships.discount} - COALESCE(${postedPaymentsByMembership.amount}, 0))), 0)::int`,
           })
           .from(memberships)
           .leftJoin(
@@ -586,7 +588,9 @@ export const gymRouter = router({
           )
           .where(ne(memberships.status, "cancelled")),
         db
-          .select({ total: sql<number>`COALESCE(SUM(${expenses.amount}), 0)` })
+          .select({
+            total: sql<number>`COALESCE(SUM(${expenses.amount}), 0)::int`,
+          })
           .from(expenses)
           .where(
             and(
@@ -637,6 +641,15 @@ export const gymRouter = router({
       renewalRequests: renewalRequestRows,
       staff: staffRows,
       invites: inviteRows,
+      // Self-hosted installs: which accounts already have a password.
+      passwordEmails:
+        isAdmin && localAuthEnabled()
+          ? (
+              await db
+                .select({ email: loginCredentials.email })
+                .from(loginCredentials)
+            ).map(row => row.email)
+          : [],
       retention: {
         expiring: expiringRows,
         inactive: inactiveRows,
@@ -710,7 +723,7 @@ export const gymRouter = router({
         db
           .select({
             membershipId: payments.membershipId,
-            amount: sql<number>`COALESCE(SUM(${payments.amount}), 0)`,
+            amount: sql<number>`COALESCE(SUM(${payments.amount}), 0)::int`,
           })
           .from(payments)
           .where(eq(payments.status, "posted"))
@@ -897,21 +910,24 @@ export const gymRouter = router({
           });
 
         const memberCode = `SW-${nanoid(8).toUpperCase()}`;
-        const insertedMember = await tx.insert(members).values({
-          memberCode,
-          name: input.name,
-          phone: input.phone,
-          email: input.email || null,
-          dateOfBirth: input.dateOfBirth || null,
-          emergencyContact: input.emergencyContact || null,
-          joiningDate: input.joiningDate,
-          fitnessGoal: input.fitnessGoal || null,
-          heightCm: input.heightCm?.toFixed(1) ?? null,
-          photoUrl: input.photoUrl || null,
-          status: plan ? "active" : input.status,
-          trainerId: input.trainerId ?? null,
-        });
-        const memberId = Number(insertedMember[0].insertId);
+        const insertedMember = await tx
+          .insert(members)
+          .values({
+            memberCode,
+            name: input.name,
+            phone: input.phone,
+            email: input.email || null,
+            dateOfBirth: input.dateOfBirth || null,
+            emergencyContact: input.emergencyContact || null,
+            joiningDate: input.joiningDate,
+            fitnessGoal: input.fitnessGoal || null,
+            heightCm: input.heightCm?.toFixed(1) ?? null,
+            photoUrl: input.photoUrl || null,
+            status: plan ? "active" : input.status,
+            trainerId: input.trainerId ?? null,
+          })
+          .returning({ id: members.id });
+        const memberId = insertedMember[0].id;
         await tx.insert(auditLogs).values({
           actorId: ctx.user.id,
           action: "member.created",
@@ -930,19 +946,22 @@ export const gymRouter = router({
           };
 
         const endDate = addDays(input.joiningDate, plan.durationDays - 1);
-        const insertedMembership = await tx.insert(memberships).values({
-          memberId,
-          planId: plan.id,
-          startDate: input.joiningDate,
-          endDate,
-          planName: plan.name,
-          planPrice: plan.price,
-          discount: input.discount,
-          status: "active",
-          adminOverride: false,
-          createdBy: ctx.user.id,
-        });
-        const membershipId = Number(insertedMembership[0].insertId);
+        const insertedMembership = await tx
+          .insert(memberships)
+          .values({
+            memberId,
+            planId: plan.id,
+            startDate: input.joiningDate,
+            endDate,
+            planName: plan.name,
+            planPrice: plan.price,
+            discount: input.discount,
+            status: "active",
+            adminOverride: false,
+            createdBy: ctx.user.id,
+          })
+          .returning({ id: memberships.id });
+        const membershipId = insertedMembership[0].id;
         await tx.insert(auditLogs).values({
           actorId: ctx.user.id,
           action: "membership.assigned",
@@ -1103,15 +1122,18 @@ export const gymRouter = router({
         });
         return { id: input.id };
       }
-      const result = await db.insert(plans).values({
-        name: input.name,
-        period: input.period,
-        durationDays: input.durationDays,
-        price: input.price,
-        description: input.description || null,
-        active: input.active,
-      });
-      return { id: Number(result[0].insertId) };
+      const result = await db
+        .insert(plans)
+        .values({
+          name: input.name,
+          period: input.period,
+          durationDays: input.durationDays,
+          price: input.price,
+          description: input.description || null,
+          active: input.active,
+        })
+        .returning({ id: plans.id });
+      return { id: result[0].id };
     }),
 
   assignMembership: frontDesk
@@ -1227,19 +1249,22 @@ export const gymRouter = router({
             reason: "Admin allowed overlapping validity window.",
           });
         const endDate = addDays(input.startDate, plan.durationDays - 1);
-        const insertedMembership = await tx.insert(memberships).values({
-          memberId: input.memberId,
-          planId: plan.id,
-          startDate: input.startDate,
-          endDate,
-          planName: plan.name,
-          planPrice: plan.price,
-          discount: input.discount,
-          status: "active",
-          adminOverride: overlaps,
-          createdBy: ctx.user.id,
-        });
-        const membershipId = Number(insertedMembership[0].insertId);
+        const insertedMembership = await tx
+          .insert(memberships)
+          .values({
+            memberId: input.memberId,
+            planId: plan.id,
+            startDate: input.startDate,
+            endDate,
+            planName: plan.name,
+            planPrice: plan.price,
+            discount: input.discount,
+            status: "active",
+            adminOverride: overlaps,
+            createdBy: ctx.user.id,
+          })
+          .returning({ id: memberships.id });
+        const membershipId = insertedMembership[0].id;
         await tx
           .update(members)
           .set({ status: "active" })
@@ -1612,12 +1637,7 @@ export const gymRouter = router({
           staffId: ctx.user.id,
         });
       } catch (error) {
-        if (
-          typeof error === "object" &&
-          error &&
-          "code" in error &&
-          error.code === "ER_DUP_ENTRY"
-        )
+        if (isUniqueViolation(error))
           return {
             allowed: false,
             duplicate: true,
@@ -1635,7 +1655,7 @@ export const gymRouter = router({
       const day = todayIST();
       const [counts, ownVisits] = await Promise.all([
         db
-          .select({ count: sql<number>`COUNT(*)` })
+          .select({ count: sql<number>`COUNT(*)::int` })
           .from(attendance)
           .where(
             and(
@@ -1710,7 +1730,7 @@ export const gymRouter = router({
               sql`${attendance.checkedOutAt} IS NULL`
             )
           );
-        if (!updated[0].affectedRows)
+        if (!updated.rowCount)
           throw new TRPCError({
             code: "CONFLICT",
             message: "This gym visit has already been checked out.",
@@ -1780,11 +1800,14 @@ export const gymRouter = router({
             code: "CONFLICT",
             message: "You already have a renewal request awaiting the gym.",
           });
-        const inserted = await tx.insert(renewalRequests).values({
-          memberId,
-          planId: plan.id,
-        });
-        const requestId = Number(inserted[0].insertId);
+        const inserted = await tx
+          .insert(renewalRequests)
+          .values({
+            memberId,
+            planId: plan.id,
+          })
+          .returning({ id: renewalRequests.id });
+        const requestId = inserted[0].id;
         await tx.insert(auditLogs).values({
           actorId: ctx.user.id,
           action: "membership.renewal_requested",
@@ -1898,7 +1921,7 @@ export const gymRouter = router({
             });
           const existing = await tx
             .select({
-              total: sql<number>`COALESCE(SUM(${payments.amount}), 0)`,
+              total: sql<number>`COALESCE(SUM(${payments.amount}), 0)::int`,
             })
             .from(payments)
             .where(
@@ -2029,14 +2052,17 @@ export const gymRouter = router({
         });
         return { id: input.id };
       }
-      const result = await db.insert(expenses).values({
-        expenseDate: input.expenseDate,
-        category: input.category,
-        amount: input.amount,
-        description: input.description || null,
-        enteredBy: ctx.user.id,
-      });
-      return { id: Number(result[0].insertId) };
+      const result = await db
+        .insert(expenses)
+        .values({
+          expenseDate: input.expenseDate,
+          category: input.category,
+          amount: input.amount,
+          description: input.description || null,
+          enteredBy: ctx.user.id,
+        })
+        .returning({ id: expenses.id });
+      return { id: result[0].id };
     }),
 
   saveWorkout: trainerOrAdmin
@@ -2081,15 +2107,18 @@ export const gymRouter = router({
           .where(eq(workouts.id, input.id));
         return { id: input.id };
       }
-      const result = await db.insert(workouts).values({
-        memberId: input.memberId,
-        trainerId: ctx.user.id,
-        workoutDate: input.workoutDate,
-        title: input.title,
-        exercises: input.exercises || null,
-        dietNotes: input.dietNotes || null,
-      });
-      return { id: Number(result[0].insertId) };
+      const result = await db
+        .insert(workouts)
+        .values({
+          memberId: input.memberId,
+          trainerId: ctx.user.id,
+          workoutDate: input.workoutDate,
+          title: input.title,
+          exercises: input.exercises || null,
+          dietNotes: input.dietNotes || null,
+        })
+        .returning({ id: workouts.id });
+      return { id: result[0].id };
     }),
 
   saveProgress: trainerOrAdmin
@@ -2104,14 +2133,17 @@ export const gymRouter = router({
     .mutation(async ({ ctx, input }) => {
       await verifyMemberAccess(ctx.user, input.memberId);
       const db = await dbRequired();
-      const result = await db.insert(progressEntries).values({
-        memberId: input.memberId,
-        trainerId: ctx.user.id,
-        entryDate: input.entryDate,
-        weightKg: input.weightKg.toFixed(1),
-        notes: input.notes || null,
-      });
-      return { id: Number(result[0].insertId) };
+      const result = await db
+        .insert(progressEntries)
+        .values({
+          memberId: input.memberId,
+          trainerId: ctx.user.id,
+          entryDate: input.entryDate,
+          weightKg: input.weightKg.toFixed(1),
+          notes: input.notes || null,
+        })
+        .returning({ id: progressEntries.id });
+      return { id: result[0].id };
     }),
 
   updateFollowUp: roleProcedure("owner", "admin", "receptionist")

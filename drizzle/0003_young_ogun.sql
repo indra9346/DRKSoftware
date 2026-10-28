@@ -1,1 +1,0 @@
-ALTER TABLE `users` ADD CONSTRAINT `users_linked_member_id_unique` UNIQUE(`linkedMemberId`);

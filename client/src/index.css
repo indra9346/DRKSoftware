@@ -300,6 +300,27 @@ textarea {
   color: #eeeeee;
   text-align: left;
 }
+.sidebar-password {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 7px 0;
+  border: 0;
+  background: transparent;
+  color: #a0a599;
+  font-size: 12px;
+  font-weight: 700;
+}
+.sidebar-password:hover {
+  color: #c6f31a;
+}
+.password-login {
+  display: grid;
+  gap: 12px;
+}
+.password-login .error-copy {
+  margin: 0;
+}
 .user-avatar,
 .topbar-avatar {
   display: grid;

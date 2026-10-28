@@ -72,11 +72,13 @@ async function touchDevice(
   await db
     .insert(devices)
     .values({ sn, lastSeenAt: new Date(), lastIp: ip, pushVersion: pushver })
-    .onDuplicateKeyUpdate({
+    .onConflictDoUpdate({
+      target: devices.sn,
+      // Keep the stored IP / protocol version when this request does not report one.
       set: {
         lastSeenAt: new Date(),
-        lastIp: ip ?? sql`lastIp`,
-        pushVersion: pushver ?? sql`pushVersion`,
+        ...(ip ? { lastIp: ip } : {}),
+        ...(pushver ? { pushVersion: pushver } : {}),
       },
     });
   const [row] = await db
@@ -179,7 +181,10 @@ async function cdata(
         await db
           .insert(deviceUsers)
           .values({ deviceSn: device.sn, pin: u.pin, ...row })
-          .onDuplicateKeyUpdate({ set: row });
+          .onConflictDoUpdate({
+            target: [deviceUsers.deviceSn, deviceUsers.pin],
+            set: row,
+          });
       } else if (r.type === "fp") {
         const f = r.fp;
         const row = {
@@ -191,12 +196,18 @@ async function cdata(
         await db
           .insert(fingerprintTemplates)
           .values({ pin: f.pin, fid: f.fid, ...row })
-          .onDuplicateKeyUpdate({ set: row });
+          .onConflictDoUpdate({
+            target: [fingerprintTemplates.pin, fingerprintTemplates.fid],
+            set: row,
+          });
         const count = sql`(select count(*) from gym_fingerprint_templates t where t.pin = ${f.pin})`;
         await db
           .insert(deviceUsers)
           .values({ deviceSn: device.sn, pin: f.pin, fingerprints: 1 })
-          .onDuplicateKeyUpdate({ set: { fingerprints: count } });
+          .onConflictDoUpdate({
+            target: [deviceUsers.deviceSn, deviceUsers.pin],
+            set: { fingerprints: count },
+          });
       }
     }
     if (stamp)
@@ -236,25 +247,26 @@ async function getrequest(
   }
 
   // Commands sent but never answered (machine restarted) go out again, up to 3 tries.
-  // sentAt/notBefore are written by the app in UTC (Drizzle), so compare with UTC_TIMESTAMP().
+  // sentAt/notBefore are stored with their time zone, so now() compares them exactly.
   await db.execute(
-    sql`update gym_device_commands set status = if(attempts >= 3, 'failed', 'queued')
-        where deviceSn = ${device.sn} and status = 'sent' and sentAt < utc_timestamp() - interval 3 minute`
+    sql`update gym_device_commands
+        set status = (case when attempts >= 3 then 'failed' else 'queued' end)::device_command_status
+        where "deviceSn" = ${device.sn} and status = 'sent' and "sentAt" < now() - interval '3 minutes'`
   );
   const queued = (
-    await db.execute(
+    await db.execute<{
+      id: number;
+      command: string;
+      pin: number | null;
+      name: string | null;
+    }>(
       sql`select c.id, c.command, b.pin, m.name from gym_device_commands c
-          left join gym_biometric_members b on b.memberId = c.memberId
-          left join gym_members m on m.id = c.memberId
-          where c.deviceSn = ${device.sn} and c.status = 'queued' and (c.notBefore is null or c.notBefore <= utc_timestamp())
+          left join gym_biometric_members b on b."memberId" = c."memberId"
+          left join gym_members m on m.id = c."memberId"
+          where c."deviceSn" = ${device.sn} and c.status = 'queued' and (c."notBefore" is null or c."notBefore" <= now())
           order by c.id limit 60`
     )
-  )[0] as unknown as {
-    id: number;
-    command: string;
-    pin: number | null;
-    name: string | null;
-  }[];
+  ).rows;
   const lines: string[] = [];
   let bytes = 0;
   for (const c of queued) {

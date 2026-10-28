@@ -1,61 +1,19 @@
 {
   "version": "7",
-  "dialect": "mysql",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "5",
-      "when": 1788785580464,
-      "tag": "0000_initial_users",
+      "version": "7",
+      "when": 1793157897617,
+      "tag": "0000_supabase_initial",
       "breakpoints": true
     },
     {
       "idx": 1,
-      "version": "5",
-      "when": 1792635837914,
-      "tag": "0001_rare_bromley",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1792637293388,
-      "tag": "0002_regular_purifiers",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1792638373243,
-      "tag": "0003_young_ogun",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "5",
-      "when": 1792639606241,
-      "tag": "0004_brainy_bulldozer",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "5",
-      "when": 1792649946062,
-      "tag": "0005_melodic_iron_lad",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "5",
-      "when": 1792656570765,
-      "tag": "0006_fit_crush_rename",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "5",
-      "when": 1792899317190,
-      "tag": "0007_fingerprint_machine",
+      "version": "7",
+      "when": 1793157903387,
+      "tag": "0001_supabase_hardening",
       "breakpoints": true
     }
   ]

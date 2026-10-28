@@ -2,15 +2,15 @@ import { describe, expect, it } from "vitest";
 import { devLoginEnabled, isLocalDatabaseUrl, resolveDevRole } from "./_core/devLogin";
 import { publicPlatformConfig } from "./_core/publicConfig";
 
-const local = "mysql://root:dev@127.0.0.1:3307/swangym_dev";
+const local = "postgres://postgres:dev@127.0.0.1:5544/fitcrush_dev";
 
 describe("local-only dev login guard", () => {
   it("recognises only loopback database hosts", () => {
     expect(isLocalDatabaseUrl(local)).toBe(true);
-    expect(isLocalDatabaseUrl("mysql://u:p@localhost:3306/db")).toBe(true);
-    expect(isLocalDatabaseUrl("mysql://u:p@[::1]:3306/db")).toBe(true);
-    expect(isLocalDatabaseUrl("mysql://u:p@db.example.com:3306/db")).toBe(false);
-    expect(isLocalDatabaseUrl("mysql://u:p@localhost.example.com/db")).toBe(false);
+    expect(isLocalDatabaseUrl("postgres://u:p@localhost:3306/db")).toBe(true);
+    expect(isLocalDatabaseUrl("postgres://u:p@[::1]:3306/db")).toBe(true);
+    expect(isLocalDatabaseUrl("postgres://u:p@db.example.com:3306/db")).toBe(false);
+    expect(isLocalDatabaseUrl("postgres://u:p@localhost.example.com/db")).toBe(false);
     expect(isLocalDatabaseUrl("not a url")).toBe(false);
     expect(isLocalDatabaseUrl(undefined)).toBe(false);
   });
@@ -22,7 +22,7 @@ describe("local-only dev login guard", () => {
     expect(devLoginEnabled({ ...on, NODE_ENV: undefined })).toBe(false);
     expect(devLoginEnabled({ ...on, DEV_LOGIN: undefined })).toBe(false);
     expect(devLoginEnabled({ ...on, DEV_LOGIN: "1" })).toBe(false);
-    expect(devLoginEnabled({ ...on, DATABASE_URL: "mysql://u:p@shared.host/db" })).toBe(false);
+    expect(devLoginEnabled({ ...on, DATABASE_URL: "postgres://u:p@shared.host/db" })).toBe(false);
     expect(devLoginEnabled({ ...on, DATABASE_URL: undefined })).toBe(false);
   });
 

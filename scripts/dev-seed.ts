@@ -46,8 +46,11 @@ const planRows = [
 ] as const;
 const planIds: number[] = [];
 for (const plan of planRows) {
-  const [row] = await db.insert(plans).values({ ...plan, description: `${plan.name} access to all floors` });
-  planIds.push(Number(row.insertId));
+  const [row] = await db
+    .insert(plans)
+    .values({ ...plan, description: `${plan.name} access to all floors` })
+    .returning({ id: plans.id });
+  planIds.push(row.id);
 }
 
 // [name, plan index, days since start, paid fully?, visits in last 20 days]
@@ -78,8 +81,8 @@ for (const [index, [name, planIndex, daysAgo, paidFully, visits]] of roster.entr
     fitnessGoal: ["Fat loss", "Strength", "General fitness", "Muscle gain"][index % 4],
     heightCm: String(155 + (index * 3) % 30),
     trainerId: index % 3 === 0 ? trainerId : null,
-  });
-  const memberId = Number(memberRow.insertId);
+  }).returning({ id: members.id });
+  const memberId = memberRow.id;
   memberIds.push(memberId);
 
   const [membershipRow] = await db.insert(memberships).values({
@@ -91,11 +94,11 @@ for (const [index, [name, planIndex, daysAgo, paidFully, visits]] of roster.entr
     planPrice: plan.price,
     status: endDate < today ? "expired" : "active",
     createdBy: deskId,
-  });
+  }).returning({ id: memberships.id });
   await db.transaction(tx =>
     recordPaymentInTransaction(tx, {
       memberId,
-      membershipId: Number(membershipRow.insertId),
+      membershipId: membershipRow.id,
       amount: paidFully ? plan.price : Math.round(plan.price / 2),
       mode: (["cash", "upi", "bank"] as const)[index % 3],
       notes: paidFully ? null : "Part payment",

@@ -93,7 +93,10 @@ export async function saveBiometricSettings(db: Exec, s: BiometricSettings) {
   await db
     .insert(biometricConfig)
     .values({ id: 1, value: JSON.stringify(s) })
-    .onDuplicateKeyUpdate({ set: { value: JSON.stringify(s) } });
+    .onConflictDoUpdate({
+      target: biometricConfig.id,
+      set: { value: JSON.stringify(s) },
+    });
 }
 
 // ---------------------------------------------------------------- member states
@@ -503,16 +506,19 @@ async function applyMember(
   await db
     .insert(memberDeviceState)
     .values({ deviceSn: sn, memberId: entry.memberId, ...row })
-    .onDuplicateKeyUpdate({ set: row });
+    .onConflictDoUpdate({
+      target: [memberDeviceState.deviceSn, memberDeviceState.memberId],
+      set: row,
+    });
   facts.last.set(entry.memberId, row);
   return "queued";
 }
 
 async function activeDeviceSns(db: Exec, only?: string): Promise<string[]> {
-  const rows = await db.execute(
-    sql`select sn from gym_devices where status = 'active' ${only ? sql`and sn = ${only}` : sql``} order by createdAt`
+  const rows = await db.execute<{ sn: string }>(
+    sql`select sn from gym_devices where status = 'active' ${only ? sql`and sn = ${only}` : sql``} order by "createdAt"`
   );
-  return (rows[0] as unknown as { sn: string }[]).map(r => r.sn);
+  return rows.rows.map(r => r.sn);
 }
 
 /** Bring one machine (or all) in line with every linked member. Cheap when nothing changed. */
@@ -575,7 +581,7 @@ export async function queueDeviceCommand(
   if (kind === "upload_all") {
     // Stamps back to zero + CHECK: the machine uploads every user, fingerprint and punch it holds.
     await db.execute(
-      sql`update gym_devices set opStamp = '0', attStamp = '0' where sn = ${sn}`
+      sql`update gym_devices set "opStamp" = '0', "attStamp" = '0' where sn = ${sn}`
     );
     await enqueue(
       db,
@@ -641,7 +647,7 @@ export async function linkMember(
   await db
     .insert(biometricMembers)
     .values({ memberId, pin })
-    .onDuplicateKeyUpdate({ set: { pin } });
+    .onConflictDoUpdate({ target: biometricMembers.memberId, set: { pin } });
   await db
     .insert(auditLogs)
     .values({
@@ -716,8 +722,8 @@ export async function queueEnroll(
   actorId: number
 ) {
   const [device] = await db
-    .execute(sql`select status from gym_devices where sn = ${sn}`)
-    .then(r => r[0] as unknown as { status: string }[]);
+    .execute<{ status: string }>(sql`select status from gym_devices where sn = ${sn}`)
+    .then(r => r.rows);
   if (device?.status !== "active")
     throw new Error("That machine is not connected");
   let [link] = await db
@@ -809,8 +815,7 @@ export async function recordPunch(
   });
   const inserted = await db
     .insert(biometricPunches)
-    .ignore()
-    .values({
+      .values({
       deviceSn: sn,
       pin: punch.pin,
       memberId: entry?.memberId ?? null,
@@ -822,8 +827,9 @@ export async function recordPunch(
       reason: state?.reason ?? "unknown_user",
       headline: (state?.headline ?? "Not linked in the software").slice(0, 160),
       duplicate,
-    });
-  if (!inserted[0].affectedRows || !entry || !state) return;
+    })
+      .onConflictDoNothing();
+  if (!inserted.rowCount || !entry || !state) return;
 
   const recentDay = punch.date >= addDays(todayIST(), -1);
   if (state.allowed && !duplicate && recentDay) {
@@ -840,14 +846,14 @@ export async function recordPunch(
     if (!visit) {
       await db
         .insert(attendance)
-        .ignore()
-        .values({
+      .values({
           memberId: entry.memberId,
           checkInDate: punch.date,
           checkedInAt: punch.at,
           method: "biometric",
           staffId: SYSTEM_ACTOR,
-        });
+        })
+      .onConflictDoNothing();
     } else if (
       s.machine.checkoutAfterMinutes > 0 &&
       !visit.checkedOutAt &&
@@ -889,7 +895,6 @@ export async function storeHistory(db: Db, sn: string, punches: Punch[]) {
     const chunk = punches.slice(i, i + 200);
     await db
       .insert(biometricPunches)
-      .ignore()
       .values(
         chunk.map(p => ({
           deviceSn: sn,
@@ -902,7 +907,8 @@ export async function storeHistory(db: Db, sn: string, punches: Punch[]) {
           reason: "history",
           headline: "From machine history",
         }))
-      );
+      )
+      .onConflictDoNothing();
   }
 }
 
@@ -947,8 +953,7 @@ export async function raiseAlert(
   const phone = waNumber(entry.phone);
   const res = await db
     .insert(memberAlerts)
-    .ignore()
-    .values({
+      .values({
       memberId: entry.memberId,
       kind,
       dedupeKey,
@@ -956,8 +961,9 @@ export async function raiseAlert(
       message,
       status: phone ? "pending" : "skipped",
       error: phone ? null : "No valid mobile number",
-    });
-  return res[0].affectedRows > 0;
+    })
+      .onConflictDoNothing();
+  return (res.rowCount ?? 0) > 0;
 }
 
 /** Welcome / renewal / receipt messages for plans and payments added in the last 3 days. */
@@ -1135,22 +1141,25 @@ export async function deliverPending(db: Db) {
 export async function runDailyJobs(db: Db, force = false) {
   const today = todayIST();
   // "{}" so defaults keep coming from the code until the owner saves settings.
-  await db.insert(biometricConfig).ignore().values({ id: 1, value: "{}" });
+  await db
+    .insert(biometricConfig)
+    .values({ id: 1, value: "{}" })
+    .onConflictDoNothing();
   const claim = await db.execute(
     force
-      ? sql`update gym_biometric_config set lastDailyRun = ${today} where id = 1`
-      : sql`update gym_biometric_config set lastDailyRun = ${today} where id = 1 and (lastDailyRun is null or lastDailyRun <> ${today})`
+      ? sql`update gym_biometric_config set "lastDailyRun" = ${today} where id = 1`
+      : sql`update gym_biometric_config set "lastDailyRun" = ${today} where id = 1 and ("lastDailyRun" is null or "lastDailyRun" <> ${today})`
   );
-  if (!force && !(claim[0] as unknown as { affectedRows: number }).affectedRows)
+  if (!force && !claim.rowCount)
     return { ran: false as const, today };
   const sync = await reconcileDevices(db, { reason: `daily ${today}` });
   const alerts = await runAlerts(db, today);
   const delivery = await deliverPending(db);
   await db.execute(
-    sql`delete from gym_device_log where at < now() - interval 3 day`
+    sql`delete from gym_device_log where at < now() - interval '3 days'`
   );
   await db.execute(
-    sql`delete from gym_device_commands where status in ('done', 'cancelled') and createdAt < now() - interval 30 day`
+    sql`delete from gym_device_commands where status in ('done', 'cancelled') and "createdAt" < now() - interval '30 days'`
   );
   return { ran: true as const, today, sync, alerts, delivery };
 }

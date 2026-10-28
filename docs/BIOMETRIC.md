@@ -1,5 +1,8 @@
 # Fingerprint machine (eSSL) and WhatsApp alerts
 
+> **On-site set-up for Gowda** (machine, door lock, network, tests): [GOWDA_MACHINE_SETUP.md](GOWDA_MACHINE_SETUP.md).
+> **Database and hosting** (Supabase, settings, go-live): [SETUP.md](SETUP.md). This page is the full reference.
+
 Fit Crush's entrance machine is an eSSL fingerprint terminal (ZKTeco-made). It now works with this
 app over eSSL's **ADMS / "Cloud Server"** connection (ZKTeco *Attendance PUSH protocol 2.4.1*).
 
@@ -153,13 +156,13 @@ node scripts/essl-simulator.mjs --server http://127.0.0.1:3000 --interactive
   - `server/biometric/`: rules, ADMS protocol, engine, `/iclock` route, tRPC `biometric` router.
   - `client/src/components/gym/Biometric.tsx`: the screens.
   - `client/src/pages/Gate.tsx`: the gate screen.
-- **Database:** additive migration `drizzle/0007_fingerprint_machine.sql`, with the new
-  `gym_biometric_*`, `gym_device*`, `gym_fingerprint_templates`, `gym_member_*` and
-  `gym_biometric_punches` tables. It also adds `biometric` to `gym_attendance.method`.
+- **Database:** PostgreSQL (`drizzle/0000_supabase_initial.sql`), tables `gym_biometric_*`,
+  `gym_device*`, `gym_fingerprint_templates`, `gym_member_*` and `gym_biometric_punches`;
+  `gym_attendance.method` includes `biometric`.
 - **Tests:** `pnpm test` runs the rule tests. The end-to-end machine test (a simulated machine over
-  HTTP against MySQL) runs with
-  `BIOMETRIC_TEST_DATABASE_URL=mysql://user@127.0.0.1:3306/<name>_test pnpm test`. It drops every
-  table in that `_test` database first.
+  HTTP against PostgreSQL) runs with
+  `BIOMETRIC_TEST_DATABASE_URL=postgres://postgres@127.0.0.1:5432/<name>_test pnpm test`. It drops
+  everything in that `_test` database first.
 
 ## Troubleshooting
 

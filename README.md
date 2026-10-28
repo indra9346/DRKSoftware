@@ -1,10 +1,24 @@
 # Fit Crush Gym Management Software
 
-A single-branch gym operations web app built on React, Express, tRPC, Drizzle and the managed MySQL database. It covers members, plans and renewals, attendance, manual receipts, training, expenses, owner reports, retention follow-up and member self-service. The app uses India Standard Time (Asia/Kolkata) and INR.
+A single-branch gym operations web app built on React, Express, tRPC, Drizzle and PostgreSQL (Supabase). It covers members, plans and renewals, attendance, manual receipts, training, expenses, owner reports, retention follow-up and member self-service. The app uses India Standard Time (Asia/Kolkata) and INR.
 
-## First access and owner security
+## Going live (Supabase + a Node.js host)
 
-The app uses Manus OAuth; it does not store gym passwords. Before the first sign-in, keep project visibility set to **owner** (or another restricted setting) and do not publish/open the app publicly. If `OWNER_OPEN_ID` is set in the server environment before any login, only that Manus identity is the initial owner. Otherwise, the first authenticated identity atomically claims the owner/admin role and the open ID is stored in a private settings column. Once claimed, other accounts cannot claim or remove that owner role through the Team page. Sign in as the gym owner first, then invite staff/member accounts.
+The self-hosted set-up uses a Supabase PostgreSQL database and email + password sign-in (`AUTH_MODE=local`). Step by step, including what to buy, every setting and the checks to run: [docs/SETUP.md](docs/SETUP.md). The settings template is [.env.example](.env.example).
+
+```bash
+pnpm fitcrush setup    # create/update the tables, create the owner login
+pnpm fitcrush check    # read-only report: settings, database, machine, blocking on/off
+pnpm fitcrush password <email>   # reset a password (owner: add --owner)
+```
+
+On the server the built copy does the same: `node dist/fitcrush.js check`.
+
+With `AUTH_MODE=local` the owner adds staff under **Team & access** with an email and a password; roles, deactivation and the bootstrap-owner protection below work the same way. Passwords are stored as salted scrypt hashes, a login pauses for 15 minutes after 8 wrong passwords, and setting a new password signs that person out of their other devices. Every table has row level security on with no policies, so Supabase's public API keys cannot read gym data; the app's own database connection is unaffected.
+
+## First access and owner security (Manus installs)
+
+On Manus, the app uses Manus OAuth; it does not store gym passwords. Before the first sign-in, keep project visibility set to **owner** (or another restricted setting) and do not publish/open the app publicly. If `OWNER_OPEN_ID` is set in the server environment before any login, only that Manus identity is the initial owner. Otherwise, the first authenticated identity atomically claims the owner/admin role and the open ID is stored in a private settings column. Once claimed, other accounts cannot claim or remove that owner role through the Team page. Sign in as the gym owner first, then invite staff/member accounts.
 
 An admin can allow-list an email and role from Team & Access. The invited person must sign in through Manus OAuth; the app does not send the invitation or a password. A member's account must be linked to their member profile before the member portal can show personal information. Inactive accounts are rejected server-side.
 
@@ -47,22 +61,29 @@ The initialized project uses Node.js with pnpm 10.18.0. Dependencies are in `pac
 ```bash
 pnpm dev       # development server (Preview port 3000)
 pnpm check     # TypeScript check
-pnpm build     # production frontend and server build
+pnpm build     # production frontend and server build (dist/index.js, dist/fitcrush.js)
 pnpm db:migrate # apply already-generated, committed migrations
+pnpm test      # rule tests; add BIOMETRIC_TEST_DATABASE_URL for the database tests
 ```
 
-For an intentional schema change, review `drizzle/schema.ts` and generated SQL, then use `pnpm db:push` to generate and apply pending migrations. The development and published app share the same managed database. Migration DDL and any test writes affect that shared database; do not insert fictitious production/member/payment data or use live member records for acceptance testing. Keep migrations additive and commit them with the app. The OAuth cookie is `webdev_app_session` with `SameSite=None; Secure` for HTTPS Preview.
+The database is PostgreSQL 14+ (Supabase runs 15/17). For an intentional schema change, review `drizzle/schema.ts` and the generated SQL, then use `pnpm db:push`. Keep migrations additive and commit them with the app; with `AUTO_MIGRATE=true` the server applies them on start. A new table also needs row level security switched on (see `drizzle/0001_supabase_hardening.sql`); `fitcrush check` reports any table without it. `updatedAt` columns are kept current by a database trigger. Never point tests or sample data at the live database: the database tests drop everything in the `_test` database they are given, for example
+
+```bash
+BIOMETRIC_TEST_DATABASE_URL=postgres://postgres@127.0.0.1:5432/fitcrush_test pnpm test
+```
+
+On Manus, the OAuth cookie is `webdev_app_session` with `SameSite=None; Secure` for HTTPS Preview; with `AUTH_MODE=local` it is a first-party `SameSite=Lax` cookie, `Secure` whenever the site is on HTTPS.
 
 ## Privacy, data and handover
 
 Member contact, emergency-contact, date-of-birth, attendance, weight and coaching information should be treated as personal/sensitive operational data. Only collect fields the gym needs, restrict project visibility and staff roles, avoid screenshots/exports in public channels, use HTTPS, and distribute CSV/PDF exports only to authorized personnel. The app does not include an external privacy-consent workflow; the gym must approve and publish its own notice and retention policy before real member onboarding.
 
-The managed database is durable and shared between development and publication, but this repository does **not** configure or run daily backups and does not provide point-in-time recovery. Daily backup ownership, access, retention, and a documented restore drill must be agreed with the hosting/database operator before production. Do not describe the app itself as a backup system. Source-code ownership, hosting payer, monitoring/maintenance, launch date and responsibility for the ongoing service are also client/operator decisions.
+Supabase takes daily backups on paid plans (the free plan has none, and pauses a project after a week without activity), but this repository does **not** configure or run backups and does not provide point-in-time recovery. Daily backup ownership, access, retention, and a documented restore drill must be agreed with the hosting/database operator before production. Do not describe the app itself as a backup system. Source-code ownership, hosting payer, monitoring/maintenance, launch date and responsibility for the ongoing service are also client/operator decisions.
 
 ## Client sign-off required before go-live
 
-Confirm the gym name, logo and address, contact and receipt/tax details; plan catalogue, duration calculation, discount authority/limits, freeze/reactivation and expiry-override rules; expiry and inactivity thresholds; expected member/staff volume; who can scan and which phone/tablet/camera will be used; workout/diet templates and trainer assignment; whether Manus OAuth and provider-managed password recovery meet the login requirement; whether each member should receive a linked account; and hosting, backup/restore, ownership, maintenance and launch responsibilities. The sample defaults (7-day expiry alert, 14-day no-visit alert, 30-day monthly plan, India/INR) are editable/configurable where provided; they are not client-approved policy.
+Confirm the gym name, logo and address, contact and receipt/tax details; plan catalogue, duration calculation, discount authority/limits, freeze/reactivation and expiry-override rules; expiry and inactivity thresholds; expected member/staff volume; who can scan and which phone/tablet/camera will be used; workout/diet templates and trainer assignment; who holds the owner login and resets staff passwords; whether each member should receive a linked account; and hosting, backup/restore, ownership, maintenance and launch responsibilities. The sample defaults (7-day expiry alert, 14-day no-visit alert, 30-day monthly plan, India/INR) are editable/configurable where provided; they are not client-approved policy.
 
 ## Deliberate scope boundaries
 
-This release is single-branch, browser-based, and uses manual cash/UPI/bank entry. It has no online payment gateway, biometric/turnstile integration, native app, automatic WhatsApp/SMS, advanced AI coaching or diet prescription, inventory/ecommerce, hardware provisioning, or domain/email subscription. The profile photo is an optional HTTPS URL field rather than a photo-upload service. Browser print-to-PDF and CSV are the included export paths; no external spreadsheet or PDF vendor is connected.
+This release is single-branch, browser-based, and uses manual cash/UPI/bank entry. It has no online payment gateway, turnstile integration, native app, SMS (automatic WhatsApp only with the optional Meta Cloud API), advanced AI coaching or diet prescription, inventory/ecommerce, hardware provisioning, or domain/email subscription. The profile photo is an optional HTTPS URL field rather than a photo-upload service. Browser print-to-PDF and CSV are the included export paths; no external spreadsheet or PDF vendor is connected.

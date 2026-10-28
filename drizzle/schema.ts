@@ -1,41 +1,112 @@
+// PostgreSQL (Supabase) schema. Column names keep their original camelCase spelling.
+// updatedAt columns are refreshed by a database trigger (see the supabase_hardening
+// migration), like MySQL's ON UPDATE CURRENT_TIMESTAMP before the move.
 import {
   boolean,
-  decimal,
   index,
-  int,
+  integer,
+  numeric,
+  pgEnum,
+  pgTable,
   primaryKey,
-  mediumtext,
-  mysqlEnum,
-  mysqlTable,
+  serial,
   text,
   timestamp,
   uniqueIndex,
   varchar,
-} from "drizzle-orm/mysql-core";
+} from "drizzle-orm/pg-core";
 
-export const users = mysqlTable(
+// Every timestamp is stored with its time zone, so the server's own zone never shifts it.
+const withTimezone = { withTimezone: true } as const;
+
+export const userRole = pgEnum("user_role", [
+  "user",
+  "admin",
+  "owner",
+  "receptionist",
+  "trainer",
+  "member",
+]);
+export const memberStatus = pgEnum("member_status", [
+  "active",
+  "inactive",
+  "frozen",
+]);
+export const planPeriod = pgEnum("plan_period", [
+  "monthly",
+  "quarterly",
+  "half_yearly",
+  "yearly",
+  "custom",
+]);
+export const membershipStatus = pgEnum("membership_status", [
+  "active",
+  "expired",
+  "frozen",
+  "cancelled",
+]);
+export const paymentMode = pgEnum("payment_mode", ["cash", "upi", "bank"]);
+export const paymentStatus = pgEnum("payment_status", ["posted", "reversed"]);
+export const attendanceMethod = pgEnum("attendance_method", [
+  "qr",
+  "manual",
+  "biometric",
+]);
+export const renewalStatus = pgEnum("renewal_status", [
+  "pending",
+  "fulfilled",
+  "cancelled",
+]);
+export const followUpTrigger = pgEnum("follow_up_trigger", [
+  "expiring",
+  "inactive",
+]);
+export const followUpStatus = pgEnum("follow_up_status", [
+  "pending",
+  "contacted",
+  "follow_up",
+]);
+export const inviteRole = pgEnum("invite_role", [
+  "receptionist",
+  "trainer",
+  "member",
+]);
+export const accessOverride = pgEnum("access_override", ["allow", "block"]);
+export const deviceStatus = pgEnum("device_status", [
+  "pending",
+  "active",
+  "disabled",
+]);
+export const deviceCommandStatus = pgEnum("device_command_status", [
+  "queued",
+  "sent",
+  "done",
+  "failed",
+  "cancelled",
+]);
+export const alertStatus = pgEnum("alert_status", [
+  "pending",
+  "sent",
+  "failed",
+  "skipped",
+]);
+
+export const users = pgTable(
   "users",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: serial("id").primaryKey(),
     openId: varchar("openId", { length: 64 }).notNull().unique(),
     name: text("name"),
     email: varchar("email", { length: 320 }),
     loginMethod: varchar("loginMethod", { length: 64 }),
-    role: mysqlEnum("role", [
-      "user",
-      "admin",
-      "owner",
-      "receptionist",
-      "trainer",
-      "member",
-    ])
-      .default("user")
-      .notNull(),
+    role: userRole("role").default("user").notNull(),
     active: boolean("active").default(true).notNull(),
-    linkedMemberId: int("linkedMemberId"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-    lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+    linkedMemberId: integer("linkedMemberId"),
+    createdAt: timestamp("createdAt", withTimezone).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", withTimezone).defaultNow().notNull(),
+    lastSignedIn: timestamp("lastSignedIn", withTimezone)
+      .defaultNow()
+      .notNull(),
   },
   table => ({
     linkedMemberUnique: uniqueIndex("users_linked_member_id_unique").on(
@@ -44,10 +115,10 @@ export const users = mysqlTable(
   })
 );
 
-export const members = mysqlTable(
+export const members = pgTable(
   "gym_members",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: serial("id").primaryKey(),
     memberCode: varchar("memberCode", { length: 32 }).notNull().unique(),
     name: varchar("name", { length: 160 }).notNull(),
     phone: varchar("phone", { length: 32 }).notNull(),
@@ -56,14 +127,12 @@ export const members = mysqlTable(
     emergencyContact: varchar("emergencyContact", { length: 160 }),
     joiningDate: varchar("joiningDate", { length: 10 }).notNull(),
     fitnessGoal: text("fitnessGoal"),
-    heightCm: decimal("heightCm", { precision: 5, scale: 1 }),
+    heightCm: numeric("heightCm", { precision: 5, scale: 1 }),
     photoUrl: text("photoUrl"),
-    status: mysqlEnum("status", ["active", "inactive", "frozen"])
-      .default("active")
-      .notNull(),
-    trainerId: int("trainerId"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    status: memberStatus("status").default("active").notNull(),
+    trainerId: integer("trainerId"),
+    createdAt: timestamp("createdAt", withTimezone).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", withTimezone).defaultNow().notNull(),
   },
   table => ({
     phoneIndex: index("gym_members_phone_idx").on(table.phone),
@@ -71,44 +140,34 @@ export const members = mysqlTable(
   })
 );
 
-export const plans = mysqlTable("gym_plans", {
-  id: int("id").autoincrement().primaryKey(),
+export const plans = pgTable("gym_plans", {
+  id: serial("id").primaryKey(),
   name: varchar("name", { length: 120 }).notNull(),
-  period: mysqlEnum("period", [
-    "monthly",
-    "quarterly",
-    "half_yearly",
-    "yearly",
-    "custom",
-  ])
-    .default("monthly")
-    .notNull(),
-  durationDays: int("durationDays").notNull(),
-  price: int("price").notNull(),
+  period: planPeriod("period").default("monthly").notNull(),
+  durationDays: integer("durationDays").notNull(),
+  price: integer("price").notNull(),
   description: text("description"),
   active: boolean("active").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt", withTimezone).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", withTimezone).defaultNow().notNull(),
 });
 
-export const memberships = mysqlTable(
+export const memberships = pgTable(
   "gym_memberships",
   {
-    id: int("id").autoincrement().primaryKey(),
-    memberId: int("memberId").notNull(),
-    planId: int("planId").notNull(),
+    id: serial("id").primaryKey(),
+    memberId: integer("memberId").notNull(),
+    planId: integer("planId").notNull(),
     startDate: varchar("startDate", { length: 10 }).notNull(),
     endDate: varchar("endDate", { length: 10 }).notNull(),
     planName: varchar("planName", { length: 120 }).notNull(),
-    planPrice: int("planPrice").notNull(),
-    discount: int("discount").default(0).notNull(),
-    status: mysqlEnum("status", ["active", "expired", "frozen", "cancelled"])
-      .default("active")
-      .notNull(),
+    planPrice: integer("planPrice").notNull(),
+    discount: integer("discount").default(0).notNull(),
+    status: membershipStatus("status").default("active").notNull(),
     adminOverride: boolean("adminOverride").default(false).notNull(),
-    createdBy: int("createdBy").notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    createdBy: integer("createdBy").notNull(),
+    createdAt: timestamp("createdAt", withTimezone).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", withTimezone).defaultNow().notNull(),
   },
   table => ({
     memberIdx: index("gym_memberships_member_idx").on(table.memberId),
@@ -119,41 +178,39 @@ export const memberships = mysqlTable(
   })
 );
 
-export const membershipFreezes = mysqlTable(
+export const membershipFreezes = pgTable(
   "gym_membership_freezes",
   {
-    id: int("id").autoincrement().primaryKey(),
-    membershipId: int("membershipId").notNull(),
+    id: serial("id").primaryKey(),
+    membershipId: integer("membershipId").notNull(),
     startDate: varchar("startDate", { length: 10 }).notNull(),
     endDate: varchar("endDate", { length: 10 }),
     reason: varchar("reason", { length: 500 }).notNull(),
-    extensionDays: int("extensionDays").default(0).notNull(),
-    createdBy: int("createdBy").notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    extensionDays: integer("extensionDays").default(0).notNull(),
+    createdBy: integer("createdBy").notNull(),
+    createdAt: timestamp("createdAt", withTimezone).defaultNow().notNull(),
   },
   table => ({
     membershipIdx: index("gym_freezes_membership_idx").on(table.membershipId),
   })
 );
 
-export const payments = mysqlTable(
+export const payments = pgTable(
   "gym_payments",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: serial("id").primaryKey(),
     receiptNumber: varchar("receiptNumber", { length: 32 }).notNull().unique(),
-    memberId: int("memberId").notNull(),
-    membershipId: int("membershipId"),
-    amount: int("amount").notNull(),
-    mode: mysqlEnum("mode", ["cash", "upi", "bank"]).notNull(),
+    memberId: integer("memberId").notNull(),
+    membershipId: integer("membershipId"),
+    amount: integer("amount").notNull(),
+    mode: paymentMode("mode").notNull(),
     notes: varchar("notes", { length: 500 }),
-    status: mysqlEnum("status", ["posted", "reversed"])
-      .default("posted")
-      .notNull(),
+    status: paymentStatus("status").default("posted").notNull(),
     correctionReason: varchar("correctionReason", { length: 500 }),
-    correctedBy: int("correctedBy"),
-    correctedAt: timestamp("correctedAt"),
-    recordedBy: int("recordedBy").notNull(),
-    recordedAt: timestamp("recordedAt").defaultNow().notNull(),
+    correctedBy: integer("correctedBy"),
+    correctedAt: timestamp("correctedAt", withTimezone),
+    recordedBy: integer("recordedBy").notNull(),
+    recordedAt: timestamp("recordedAt", withTimezone).defaultNow().notNull(),
   },
   table => ({
     memberIdx: index("gym_payments_member_idx").on(table.memberId),
@@ -162,24 +219,22 @@ export const payments = mysqlTable(
   })
 );
 
-export const receiptCounters = mysqlTable("gym_receipt_counters", {
+export const receiptCounters = pgTable("gym_receipt_counters", {
   period: varchar("period", { length: 6 }).primaryKey(),
-  lastNumber: int("lastNumber").notNull(),
+  lastNumber: integer("lastNumber").notNull(),
 });
 
-export const attendance = mysqlTable(
+export const attendance = pgTable(
   "gym_attendance",
   {
-    id: int("id").autoincrement().primaryKey(),
-    memberId: int("memberId").notNull(),
+    id: serial("id").primaryKey(),
+    memberId: integer("memberId").notNull(),
     checkInDate: varchar("checkInDate", { length: 10 }).notNull(),
-    checkedInAt: timestamp("checkedInAt").defaultNow().notNull(),
-    checkedOutAt: timestamp("checkedOutAt"),
+    checkedInAt: timestamp("checkedInAt", withTimezone).defaultNow().notNull(),
+    checkedOutAt: timestamp("checkedOutAt", withTimezone),
     // biometric = recorded by the fingerprint machine at the entrance (staffId 0).
-    method: mysqlEnum("method", ["qr", "manual", "biometric"])
-      .default("manual")
-      .notNull(),
-    staffId: int("staffId").notNull(),
+    method: attendanceMethod("method").default("manual").notNull(),
+    staffId: integer("staffId").notNull(),
   },
   table => ({
     oncePerDay: uniqueIndex("gym_attendance_member_day_unique").on(
@@ -190,18 +245,16 @@ export const attendance = mysqlTable(
   })
 );
 
-export const renewalRequests = mysqlTable(
+export const renewalRequests = pgTable(
   "gym_renewal_requests",
   {
-    id: int("id").autoincrement().primaryKey(),
-    memberId: int("memberId").notNull(),
-    planId: int("planId").notNull(),
-    status: mysqlEnum("status", ["pending", "fulfilled", "cancelled"])
-      .default("pending")
-      .notNull(),
-    requestedAt: timestamp("requestedAt").defaultNow().notNull(),
-    handledBy: int("handledBy"),
-    handledAt: timestamp("handledAt"),
+    id: serial("id").primaryKey(),
+    memberId: integer("memberId").notNull(),
+    planId: integer("planId").notNull(),
+    status: renewalStatus("status").default("pending").notNull(),
+    requestedAt: timestamp("requestedAt", withTimezone).defaultNow().notNull(),
+    handledBy: integer("handledBy"),
+    handledAt: timestamp("handledAt", withTimezone),
   },
   table => ({
     memberIdx: index("gym_renewal_member_idx").on(table.memberId),
@@ -212,18 +265,18 @@ export const renewalRequests = mysqlTable(
   })
 );
 
-export const workouts = mysqlTable(
+export const workouts = pgTable(
   "gym_workouts",
   {
-    id: int("id").autoincrement().primaryKey(),
-    memberId: int("memberId").notNull(),
-    trainerId: int("trainerId").notNull(),
+    id: serial("id").primaryKey(),
+    memberId: integer("memberId").notNull(),
+    trainerId: integer("trainerId").notNull(),
     workoutDate: varchar("workoutDate", { length: 10 }).notNull(),
     title: varchar("title", { length: 160 }).notNull(),
     exercises: text("exercises"),
     dietNotes: text("dietNotes"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    createdAt: timestamp("createdAt", withTimezone).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", withTimezone).defaultNow().notNull(),
   },
   table => ({
     memberDateIdx: index("gym_workouts_member_date_idx").on(
@@ -233,16 +286,16 @@ export const workouts = mysqlTable(
   })
 );
 
-export const progressEntries = mysqlTable(
+export const progressEntries = pgTable(
   "gym_progress",
   {
-    id: int("id").autoincrement().primaryKey(),
-    memberId: int("memberId").notNull(),
-    trainerId: int("trainerId").notNull(),
+    id: serial("id").primaryKey(),
+    memberId: integer("memberId").notNull(),
+    trainerId: integer("trainerId").notNull(),
     entryDate: varchar("entryDate", { length: 10 }).notNull(),
-    weightKg: decimal("weightKg", { precision: 5, scale: 1 }).notNull(),
+    weightKg: numeric("weightKg", { precision: 5, scale: 1 }).notNull(),
     notes: text("notes"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdAt: timestamp("createdAt", withTimezone).defaultNow().notNull(),
   },
   table => ({
     memberDateIdx: index("gym_progress_member_date_idx").on(
@@ -252,33 +305,31 @@ export const progressEntries = mysqlTable(
   })
 );
 
-export const expenses = mysqlTable(
+export const expenses = pgTable(
   "gym_expenses",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: serial("id").primaryKey(),
     expenseDate: varchar("expenseDate", { length: 10 }).notNull(),
     category: varchar("category", { length: 100 }).notNull(),
-    amount: int("amount").notNull(),
+    amount: integer("amount").notNull(),
     description: varchar("description", { length: 500 }),
-    enteredBy: int("enteredBy").notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    enteredBy: integer("enteredBy").notNull(),
+    createdAt: timestamp("createdAt", withTimezone).defaultNow().notNull(),
   },
   table => ({ dateIdx: index("gym_expenses_date_idx").on(table.expenseDate) })
 );
 
-export const followUps = mysqlTable(
+export const followUps = pgTable(
   "gym_follow_ups",
   {
-    id: int("id").autoincrement().primaryKey(),
-    memberId: int("memberId").notNull(),
-    trigger: mysqlEnum("trigger", ["expiring", "inactive"]).notNull(),
-    status: mysqlEnum("status", ["pending", "contacted", "follow_up"])
-      .default("pending")
-      .notNull(),
+    id: serial("id").primaryKey(),
+    memberId: integer("memberId").notNull(),
+    trigger: followUpTrigger("trigger").notNull(),
+    status: followUpStatus("status").default("pending").notNull(),
     notes: varchar("notes", { length: 1000 }),
-    assignedTo: int("assignedTo"),
-    updatedBy: int("updatedBy").notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    assignedTo: integer("assignedTo"),
+    updatedBy: integer("updatedBy").notNull(),
+    updatedAt: timestamp("updatedAt", withTimezone).defaultNow().notNull(),
   },
   table => ({
     memberTriggerUnique: uniqueIndex("gym_followup_member_trigger_unique").on(
@@ -288,20 +339,38 @@ export const followUps = mysqlTable(
   })
 );
 
-export const staffInvites = mysqlTable("gym_staff_invites", {
-  id: int("id").autoincrement().primaryKey(),
+export const staffInvites = pgTable("gym_staff_invites", {
+  id: serial("id").primaryKey(),
   email: varchar("email", { length: 320 }).notNull().unique(),
   name: varchar("name", { length: 160 }),
-  role: mysqlEnum("role", ["receptionist", "trainer", "member"]).notNull(),
-  linkedMemberId: int("linkedMemberId"),
+  role: inviteRole("role").notNull(),
+  linkedMemberId: integer("linkedMemberId"),
   active: boolean("active").default(true).notNull(),
-  acceptedAt: timestamp("acceptedAt"),
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  acceptedAt: timestamp("acceptedAt", withTimezone),
+  createdBy: integer("createdBy").notNull(),
+  createdAt: timestamp("createdAt", withTimezone).defaultNow().notNull(),
 });
 
-export const gymSettings = mysqlTable("gym_settings", {
-  id: int("id").autoincrement().primaryKey(),
+// Email + password sign-in for self-hosted installs (AUTH_MODE=local). The role still
+// comes from users/staffInvites; this table only proves who is signing in.
+export const loginCredentials = pgTable("gym_login_credentials", {
+  id: serial("id").primaryKey(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  openId: varchar("openId", { length: 64 }).notNull().unique(),
+  passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+  failedAttempts: integer("failedAttempts").default(0).notNull(),
+  lockedUntil: timestamp("lockedUntil", withTimezone),
+  // Sessions issued before this moment are rejected, so a reset signs out old devices.
+  passwordChangedAt: timestamp("passwordChangedAt", withTimezone)
+    .defaultNow()
+    .notNull(),
+  createdBy: integer("createdBy"),
+  createdAt: timestamp("createdAt", withTimezone).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", withTimezone).defaultNow().notNull(),
+});
+
+export const gymSettings = pgTable("gym_settings", {
+  id: serial("id").primaryKey(),
   ownerOpenId: varchar("ownerOpenId", { length: 64 }),
   gymName: varchar("gymName", { length: 160 }).default("Fit Crush").notNull(),
   logoUrl: text("logoUrl"),
@@ -313,23 +382,23 @@ export const gymSettings = mysqlTable("gym_settings", {
   timeZone: varchar("timeZone", { length: 64 })
     .default("Asia/Kolkata")
     .notNull(),
-  expiryAlertDays: int("expiryAlertDays").default(7).notNull(),
-  inactiveVisitDays: int("inactiveVisitDays").default(14).notNull(),
+  expiryAlertDays: integer("expiryAlertDays").default(7).notNull(),
+  inactiveVisitDays: integer("inactiveVisitDays").default(14).notNull(),
   planDefaults: text("planDefaults"),
-  updatedBy: int("updatedBy"),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedBy: integer("updatedBy"),
+  updatedAt: timestamp("updatedAt", withTimezone).defaultNow().notNull(),
 });
 
-export const auditLogs = mysqlTable(
+export const auditLogs = pgTable(
   "gym_audit_logs",
   {
-    id: int("id").autoincrement().primaryKey(),
-    actorId: int("actorId").notNull(),
+    id: serial("id").primaryKey(),
+    actorId: integer("actorId").notNull(),
     action: varchar("action", { length: 80 }).notNull(),
     entityType: varchar("entityType", { length: 80 }).notNull(),
-    entityId: int("entityId"),
+    entityId: integer("entityId"),
     reason: varchar("reason", { length: 1000 }),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdAt: timestamp("createdAt", withTimezone).defaultNow().notNull(),
   },
   table => ({
     entityIdx: index("gym_audit_entity_idx").on(
@@ -343,52 +412,42 @@ export const auditLogs = mysqlTable(
 // eSSL / ZKTeco machines over ADMS (PUSH protocol). See docs/BIOMETRIC.md.
 
 /** A member's User ID (PIN) on the fingerprint machine, plus the owner's access override. */
-export const biometricMembers = mysqlTable("gym_biometric_members", {
-  memberId: int("memberId").primaryKey(),
-  pin: int("pin").notNull().unique(),
-  override: mysqlEnum("override", ["allow", "block"]),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+export const biometricMembers = pgTable("gym_biometric_members", {
+  memberId: integer("memberId").primaryKey(),
+  pin: integer("pin").notNull().unique(),
+  override: accessOverride("override"),
+  createdAt: timestamp("createdAt", withTimezone).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", withTimezone).defaultNow().notNull(),
 });
 
-export const devices = mysqlTable("gym_devices", {
+export const devices = pgTable("gym_devices", {
   sn: varchar("sn", { length: 64 }).primaryKey(),
   name: varchar("name", { length: 80 }).default("Entrance").notNull(),
-  status: mysqlEnum("status", ["pending", "active", "disabled"])
-    .default("pending")
-    .notNull(),
-  lastSeenAt: timestamp("lastSeenAt"),
+  status: deviceStatus("status").default("pending").notNull(),
+  lastSeenAt: timestamp("lastSeenAt", withTimezone),
   lastIp: varchar("lastIp", { length: 64 }),
   pushVersion: varchar("pushVersion", { length: 32 }),
   info: text("info"),
   attStamp: varchar("attStamp", { length: 32 }),
   opStamp: varchar("opStamp", { length: 32 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt", withTimezone).defaultNow().notNull(),
 });
 
-export const deviceCommands = mysqlTable(
+export const deviceCommands = pgTable(
   "gym_device_commands",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: serial("id").primaryKey(),
     deviceSn: varchar("deviceSn", { length: 64 }).notNull(),
-    command: mediumtext("command").notNull(),
+    command: text("command").notNull(),
     kind: varchar("kind", { length: 32 }).notNull(),
-    memberId: int("memberId"),
-    status: mysqlEnum("status", [
-      "queued",
-      "sent",
-      "done",
-      "failed",
-      "cancelled",
-    ])
-      .default("queued")
-      .notNull(),
-    returnCode: int("returnCode"),
-    attempts: int("attempts").default(0).notNull(),
-    notBefore: timestamp("notBefore"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    sentAt: timestamp("sentAt"),
-    doneAt: timestamp("doneAt"),
+    memberId: integer("memberId"),
+    status: deviceCommandStatus("status").default("queued").notNull(),
+    returnCode: integer("returnCode"),
+    attempts: integer("attempts").default(0).notNull(),
+    notBefore: timestamp("notBefore", withTimezone),
+    createdAt: timestamp("createdAt", withTimezone).defaultNow().notNull(),
+    sentAt: timestamp("sentAt", withTimezone),
+    doneAt: timestamp("doneAt", withTimezone),
   },
   table => ({
     queueIdx: index("gym_device_commands_queue_idx").on(
@@ -401,13 +460,13 @@ export const deviceCommands = mysqlTable(
 );
 
 /** What each machine reports it holds; card/password are kept so updates never wipe them. */
-export const deviceUsers = mysqlTable(
+export const deviceUsers = pgTable(
   "gym_device_users",
   {
     deviceSn: varchar("deviceSn", { length: 64 }).notNull(),
     pin: varchar("pin", { length: 32 }).notNull(),
     name: varchar("name", { length: 80 }),
-    privilege: int("privilege"),
+    privilege: integer("privilege"),
     card: varchar("card", { length: 32 }),
     password: varchar("password", { length: 32 }),
     grp: varchar("grp", { length: 8 }),
@@ -415,8 +474,8 @@ export const deviceUsers = mysqlTable(
     // Card and keypad password taken off during a block, put back on renewal.
     heldCard: varchar("heldCard", { length: 32 }),
     heldPassword: varchar("heldPassword", { length: 32 }),
-    fingerprints: int("fingerprints").default(0).notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    fingerprints: integer("fingerprints").default(0).notNull(),
+    updatedAt: timestamp("updatedAt", withTimezone).defaultNow().notNull(),
   },
   table => ({
     pk: primaryKey({ columns: [table.deviceSn, table.pin] }),
@@ -424,52 +483,52 @@ export const deviceUsers = mysqlTable(
 );
 
 /** Backup of every fingerprint the machine uploads, restored after a block ends. */
-export const fingerprintTemplates = mysqlTable(
+export const fingerprintTemplates = pgTable(
   "gym_fingerprint_templates",
   {
     pin: varchar("pin", { length: 32 }).notNull(),
-    fid: int("fid").notNull(),
-    template: mediumtext("template").notNull(),
-    size: int("size"),
-    valid: int("valid"),
+    fid: integer("fid").notNull(),
+    template: text("template").notNull(),
+    size: integer("size"),
+    valid: integer("valid"),
     sourceSn: varchar("sourceSn", { length: 64 }),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updatedAt", withTimezone).defaultNow().notNull(),
   },
   table => ({ pk: primaryKey({ columns: [table.pin, table.fid] }) })
 );
 
 /** What the software last told each machine for each member. */
-export const memberDeviceState = mysqlTable(
+export const memberDeviceState = pgTable(
   "gym_member_device_state",
   {
     deviceSn: varchar("deviceSn", { length: 64 }).notNull(),
-    memberId: int("memberId").notNull(),
+    memberId: integer("memberId").notNull(),
     present: boolean("present").notNull(),
     allowed: boolean("allowed").notNull(),
     blockMode: varchar("blockMode", { length: 16 }),
     message: varchar("message", { length: 120 }),
-    appliedAt: timestamp("appliedAt").defaultNow().notNull(),
+    appliedAt: timestamp("appliedAt", withTimezone).defaultNow().notNull(),
   },
   table => ({ pk: primaryKey({ columns: [table.deviceSn, table.memberId] }) })
 );
 
 /** Every punch the machine sends (allowed, blocked or unknown), for the gate screen. */
-export const biometricPunches = mysqlTable(
+export const biometricPunches = pgTable(
   "gym_biometric_punches",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: serial("id").primaryKey(),
     deviceSn: varchar("deviceSn", { length: 64 }).notNull(),
     pin: varchar("pin", { length: 32 }).notNull(),
-    memberId: int("memberId"),
-    punchedAt: timestamp("punchedAt").notNull(),
+    memberId: integer("memberId"),
+    punchedAt: timestamp("punchedAt", withTimezone).notNull(),
     punchDate: varchar("punchDate", { length: 10 }).notNull(),
-    verifyType: int("verifyType"),
-    punchState: int("punchState"),
+    verifyType: integer("verifyType"),
+    punchState: integer("punchState"),
     allowed: boolean("allowed"),
     reason: varchar("reason", { length: 32 }),
     headline: varchar("headline", { length: 160 }),
     duplicate: boolean("duplicate").default(false).notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdAt: timestamp("createdAt", withTimezone).defaultNow().notNull(),
   },
   table => ({
     uniquePunch: uniqueIndex("gym_biometric_punches_unique").on(
@@ -482,22 +541,20 @@ export const biometricPunches = mysqlTable(
 );
 
 /** WhatsApp messages for members, created once per dedupe key. */
-export const memberAlerts = mysqlTable(
+export const memberAlerts = pgTable(
   "gym_member_alerts",
   {
-    id: int("id").autoincrement().primaryKey(),
-    memberId: int("memberId").notNull(),
+    id: serial("id").primaryKey(),
+    memberId: integer("memberId").notNull(),
     kind: varchar("kind", { length: 32 }).notNull(),
     dedupeKey: varchar("dedupeKey", { length: 80 }).notNull(),
     phone: varchar("phone", { length: 20 }),
     message: text("message").notNull(),
-    status: mysqlEnum("status", ["pending", "sent", "failed", "skipped"])
-      .default("pending")
-      .notNull(),
+    status: alertStatus("status").default("pending").notNull(),
     error: varchar("error", { length: 300 }),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    sentAt: timestamp("sentAt"),
-    sentBy: int("sentBy"),
+    createdAt: timestamp("createdAt", withTimezone).defaultNow().notNull(),
+    sentAt: timestamp("sentAt", withTimezone),
+    sentBy: integer("sentBy"),
   },
   table => ({
     once: uniqueIndex("gym_member_alerts_once").on(
@@ -510,11 +567,11 @@ export const memberAlerts = mysqlTable(
 );
 
 /** Recent raw traffic from the machines, for troubleshooting the connection. */
-export const deviceLog = mysqlTable(
+export const deviceLog = pgTable(
   "gym_device_log",
   {
-    id: int("id").autoincrement().primaryKey(),
-    at: timestamp("at").defaultNow().notNull(),
+    id: serial("id").primaryKey(),
+    at: timestamp("at", withTimezone).defaultNow().notNull(),
     deviceSn: varchar("deviceSn", { length: 64 }),
     method: varchar("method", { length: 8 }),
     path: varchar("path", { length: 120 }),
@@ -526,11 +583,11 @@ export const deviceLog = mysqlTable(
 );
 
 /** Fingerprint-machine and alert settings (one row, JSON), plus the daily-job marker. */
-export const biometricConfig = mysqlTable("gym_biometric_config", {
-  id: int("id").primaryKey(),
+export const biometricConfig = pgTable("gym_biometric_config", {
+  id: integer("id").primaryKey(),
   value: text("value").notNull(),
   lastDailyRun: varchar("lastDailyRun", { length: 10 }),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt", withTimezone).defaultNow().notNull(),
 });
 
 export type User = typeof users.$inferSelect;
