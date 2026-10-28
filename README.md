@@ -2,9 +2,9 @@
 
 A single-branch gym operations web app built on React, Express, tRPC, Drizzle and PostgreSQL (Supabase). It covers members, plans and renewals, attendance, manual receipts, training, expenses, owner reports, retention follow-up and member self-service. The app uses India Standard Time (Asia/Kolkata) and INR.
 
-## Going live (Supabase + a Node.js host)
+## Going live (Supabase + Render)
 
-The self-hosted set-up uses a Supabase PostgreSQL database and email + password sign-in (`AUTH_MODE=local`). Step by step, including what to buy, every setting and the checks to run: [docs/SETUP.md](docs/SETUP.md). The settings template is [.env.example](.env.example).
+The self-hosted set-up uses a Supabase PostgreSQL database, the app on Render (`render.yaml` Blueprint, Docker) with the domain on Cloudflare, and email + password sign-in (`AUTH_MODE=local`). Step by step, including what to buy, every setting and the checks to run: [docs/SETUP.md](docs/SETUP.md). The settings template is [.env.example](.env.example).
 
 ```bash
 pnpm fitcrush setup    # create/update the tables, create the owner login

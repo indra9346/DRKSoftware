@@ -1,0 +1,35 @@
+# Render Blueprint for the Fit Crush app (docs/SETUP.md, step 3).
+# Render → New → Blueprint → pick this repository. Render asks once for the values marked
+# `sync: false`; JWT_SECRET is generated for you. The database is Supabase (not on Render).
+services:
+  - type: web
+    name: fitcrush
+    runtime: docker
+    # Closest Render region to Supabase Mumbai. Cannot be changed after creation.
+    region: singapore
+    # No plan line: Render's default for a new web service is the smallest paid instance,
+    # which stays on all the time (the free one sleeps and has monthly hour limits).
+    branch: main
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AUTH_MODE
+        value: local
+      - key: AUTO_MIGRATE
+        value: "true"
+      - key: ADMS_TIMEZONE
+        value: "330"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: PUBLIC_URL
+        sync: false
+      - key: FIRST_OWNER_NAME
+        sync: false
+      - key: FIRST_OWNER_EMAIL
+        sync: false
+      - key: FIRST_OWNER_PASSWORD
+        sync: false

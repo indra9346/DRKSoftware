@@ -12,15 +12,12 @@ for the test. Nothing is installed on the machine itself.
 
 - The **machine itself** opens the door when it recognises a finger. It does not wait for the
   internet, so the door is fast and keeps working if the internet goes down.
-
 - The software controls **which fingers the machine holds**: when a membership ends, it removes that
   member's fingerprints (and card / keypad password) from the machine. It keeps a backup and puts
   them back automatically on renewal.
-
 - So the machine must stay **connected** to the software. Expiries are applied every night after
   midnight and changes from the desk within about 10 seconds. If the connection is down, the machine
   keeps the last list it had until the connection returns.
-
 - Users who are **admins on the machine** (owner, staff) are never blocked.
 
 ## 1. What the gym needs
@@ -36,10 +33,8 @@ for the test. Nothing is installed on the machine itself.
 - Electromagnetic (EM) lock or drop bolt with its bracket, sized for the door.
 - A **separate 12 V access-control power supply with battery backup** for the lock. Do not run the
   lock from the machine's own adapter.
-
 - **Exit button** on the inside, and an **emergency break-glass** release. People must always be
   able to leave, even with no power or a failed lock.
-
 - Door sensor (optional).
 - For an EM lock (locked while powered) the relay is normally wired through **COM + NC**. Follow the
   model's diagram and fit the protection diode if the manual asks for one.
@@ -56,7 +51,6 @@ for the test. Nothing is installed on the machine itself.
 1. **M/OK → System Info → Device Info**: model, firmware version, **serial number**.
 2. **M/OK → Comm. → Cloud Server Setting** (or ADMS / Web Server): does it exist? Is there an
    **HTTPS** option?
-
 3. Does the machine have an **Access Control** menu and lock terminals?
 4. Photos: the Cloud Server screen and the back of the machine (wiring).
 
@@ -89,15 +83,12 @@ Save, then restart the machine.
 2. Copy the `bridge` folder from SWAN to `C:\fitcrush-bridge`.
 3. Right-click `start-bridge.cmd` → Edit. Set `FITCRUSH_URL=` to the software address
    (e.g. `https://app.example.in`). Save.
-
 4. Double-click `start-bridge.cmd`. The window shows the PC's address, e.g. `192.168.1.20`. Keep it
    open (it restarts itself if it stops).
-
 5. Allow the port in Windows Firewall. Open Command Prompt **as administrator** and run:
    ```
    netsh advfirewall firewall add rule name="Fit Crush bridge" dir=in action=allow protocol=TCP localport=8081
    ```
-
 6. On the router, give the PC a **fixed address** (DHCP reservation).
 7. Start the bridge with Windows: Win+R → `shell:startup` → put a shortcut to `start-bridge.cmd` there.
 8. On the machine, **M/OK → Comm. → Cloud Server Setting:**
@@ -127,10 +118,8 @@ approval*. The owner (or SWAN, on the phone) checks that the **serial number mat
 - **Members already on the machine:** the software lists them under **Fingerprint machine → Users
   on machine** and matches them by name; the owner confirms the links. Do **not** delete or
   renumber users on the machine after that.
-
 - **New members:** in the software, **Members → fingerprint button → Link to machine** (it shows
   the **User ID**), then **Enrol finger**, or enrol on the machine under that same User ID.
-
 - The owner and staff should be **admins on the machine**, so they can always open the menu.
 
 ## 7. Test before going live (with SWAN or the owner)

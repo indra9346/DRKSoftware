@@ -1,7 +1,7 @@
-# Going live: Supabase database + app hosting
+# Going live: Supabase (database) + Render (app) + Cloudflare (domain)
 
-This is the checklist for putting Fit Crush on its own database (Supabase) and its own web
-address, with email + password sign-in. The fingerprint machine and door are Gowda's part:
+This is the checklist for putting Fit Crush on its own database (Supabase), its own server
+(Render) and its own web address (domain on Cloudflare), with email + password sign-in. The fingerprint machine and door are Gowda's part:
 [GOWDA_MACHINE_SETUP.md](GOWDA_MACHINE_SETUP.md).
 
 | Who | Does what |
@@ -15,8 +15,8 @@ address, with email + password sign-in. The fingerprint machine and door are Gow
 | Item | Why | Notes |
 |---|---|---|
 | **Supabase project** | The database: members, payments, attendance, fingerprint backups | Region **South Asia (Mumbai)**. **Pro** plan recommended for a live gym: daily backups and the project is never paused. The Free plan has no backup guarantee and pauses after a week without use. Check today's prices on supabase.com/pricing. |
-| **A Node.js host for the app** | Supabase only stores data. The screens, logins and the machine's connection run in this app, which needs a server | Hostinger **Business** or **Cloud** web hosting (Node.js web apps), the same kind we use for our other sites. Any VPS with Node.js 20+ also works. |
-| **A web address** | Where staff open the software and where the machine sends punches | For example `app.<gym-domain>`. Must have HTTPS (Hostinger adds it free). |
+| **Render web service** | Supabase only stores data. The screens, logins and the machine's connection run in this app, which needs an always-on server | render.com, region **Singapore** (closest to Supabase Mumbai), the smallest **paid** instance (0.5 CPU / 512 MB). The free instance sleeps and has monthly hour limits, so it is not for a live gym. Check today's price on render.com/pricing. |
+| **A web address on Cloudflare** (optional but recommended) | Where staff open the software and where the machine sends punches | For example `app.<gym-domain>`, with the domain's DNS on Cloudflare (free plan). Without a domain the app still works at `https://fitcrush.onrender.com` (or the name Render gives it). |
 | At the gym: **front-desk PC on 24/7** with a UPS, router on the UPS | Runs the small bridge program when the machine cannot use HTTPS (most eSSL units) | Gowda confirms this on site. |
 
 ## 1. Create the Supabase project
@@ -55,30 +55,47 @@ Optional: `ADMS_TIMEZONE` (default `330`, India time), `DATABASE_SSL_CA` (verifi
 certificate; the connection is encrypted either way), and the `WHATSAPP_*` settings for automatic
 WhatsApp (see [BIOMETRIC.md](BIOMETRIC.md)).
 
-## 3. Put the app on Hostinger (Node.js web app)
+## 3. Put the app on Render
 
-1. hPanel → **Websites → Add website → Node.js web app**.
-2. Source: **Import from GitHub** → `swandigitalsolutions/Fit-Crush-Gym-Software`, branch `main`
-   (after PR #1 is merged). A zip upload of the repository also works; leave out `node_modules`
-   and `.git`.
-3. Build settings:
-   - Node.js version: **22** (20 also works)
-   - Package manager: **pnpm** (detected automatically from `pnpm-lock.yaml`)
-   - Build command: the `build` script
-   - Entry file: **`dist/index.js`**
-4. **Environment variables**: add every setting from step 2.
-5. Deploy. On the first start the log shows:
+The repository has a ready Render Blueprint, [`render.yaml`](../render.yaml): Docker build from the
+repository's `Dockerfile`, region Singapore, health check `/api/health`, a deploy on every merge to
+`main`, and a generated `JWT_SECRET`.
+
+1. render.com → sign up / sign in → **New → Blueprint**.
+2. Connect GitHub and give Render access to `swandigitalsolutions/Fit-Crush-Gym-Software`
+   (PR #1 must be merged into `main` first).
+3. Render reads `render.yaml` and asks for the values it cannot know:
+   - `DATABASE_URL`: the Session pooler URI from step 1, with the real password
+   - `PUBLIC_URL`: `https://fitcrush.onrender.com` for now (or your domain, see step 3b)
+   - `FIRST_OWNER_NAME`, `FIRST_OWNER_EMAIL`, `FIRST_OWNER_PASSWORD`: the owner's first login
+4. **Apply**. The first build takes a few minutes. The service's **Logs** then show:
    ```
    [Setup] Database updated: 0000_supabase_initial, 0001_supabase_hardening
    [Setup] Owner login created for owner@example.com.
    Server listening on port ...
    ```
-6. Connect the domain and make sure HTTPS is on.
-7. Open the address, sign in with the owner email and temporary password, then **Change password**
-   (bottom of the menu). Remove `FIRST_OWNER_PASSWORD` from the environment variables and redeploy.
+5. Open the `onrender.com` address, sign in with the owner email and temporary password, then
+   **Change password** (bottom of the menu).
+6. Render → the service → **Environment**: delete `FIRST_OWNER_PASSWORD` and save (Render redeploys).
 
-Other hosts: run `pnpm install`, `pnpm build`, then `node dist/index.js` with the same settings.
-A `Dockerfile` is included for a VPS.
+Not using the Blueprint? Create a **Web Service** from the repository with runtime **Docker**,
+region Singapore, health check path `/api/health`, and add the settings from step 2 by hand.
+
+### 3b. Your domain through Cloudflare (optional)
+
+1. Render → the service → **Settings → Custom Domains → Add**: e.g. `app.example.in`.
+2. Cloudflare → the domain → **DNS → Add record**: type **CNAME**, name `app`, target the service's
+   `onrender.com` address, proxy status **DNS only** (grey cloud).
+3. Wait until Render shows the domain as **Verified** with a certificate.
+4. Optional: switch the record to **Proxied** (orange cloud) and set Cloudflare **SSL/TLS → Full**.
+   If the machine or bridge then fails to connect, set it back to DNS only.
+5. Update `PUBLIC_URL` on Render to the new address. Give Gowda this address.
+
+Cloudflare itself does not run this app: its Workers platform is a different runtime from the
+long-running Node.js server the fingerprint machine talks to. Cloudflare is used for the domain only.
+
+Other hosts: `pnpm install`, `pnpm build`, then `node dist/index.js` with the same settings, or
+build the included `Dockerfile`.
 
 ## 4. Check everything
 
@@ -89,7 +106,8 @@ server: `node dist/fitcrush.js check`):
 pnpm fitcrush check
 ```
 
-Before the machine is connected it should end with only warnings, no `FAIL` lines:
+Before the machine is connected it should end with only warnings, no `FAIL` lines
+(Render's **Shell** tab can also run `node dist/fitcrush.js check` on the server itself):
 
 ```
 Database
@@ -101,7 +119,7 @@ Fingerprint machine
   WARN  No machine has connected yet ...
   WARN  Blocking is OFF (monitor mode) ...
 Website
-  OK    https://app.example.in is online
+  OK    https://fitcrush.onrender.com is online
 ```
 
 If the app is not deployed yet, `pnpm fitcrush setup` creates the tables and the owner login from
@@ -120,7 +138,7 @@ your PC instead (it asks for the owner's email, name and password).
 
 Send Gowda:
 - [GOWDA_MACHINE_SETUP.md](GOWDA_MACHINE_SETUP.md) (or its PDF),
-- the web address from step 3,
+- the web address from step 3 (the `onrender.com` one or your domain),
 - a receptionist or owner login for the test (or be on the phone with the owner).
 
 When the machine shows **Waiting for approval** on **Fingerprint machine**, the owner checks the
@@ -137,8 +155,8 @@ blocked before it saves. Run `pnpm fitcrush check` afterwards: it should say `Bl
 - **Forgotten staff password:** owner → Team & access → **Reset password**.
 - **Forgotten owner password:** `pnpm fitcrush password owner@example.com --owner` (from a PC with
   the `.env` settings). It signs the owner out of other devices.
-- **Updates:** merge to `main` and redeploy. With `AUTO_MIGRATE=true` the app updates its own tables
-  on start (additions only, nothing is deleted).
+- **Updates:** merge to `main`; Render deploys it by itself. With `AUTO_MIGRATE=true` the app updates
+  its own tables on start (additions only, nothing is deleted).
 - **Backups:** Supabase Pro keeps daily backups. Once a month also export **Reports & expenses →
   CSV** and keep it with the gym's records.
 
@@ -150,6 +168,8 @@ blocked before it saves. Run `pnpm fitcrush check` afterwards: it should say `Bl
 | `password authentication failed` | Wrong password, or the user is not `postgres.<project-ref>` (copy the Session pooler URI again) |
 | `Tenant or user not found` | The pooler address is for another region or project; copy it again from Connect |
 | `connect ENETUNREACH` or a long IPv6 address in the error | You used the Direct connection; use the Session pooler |
+| Render deploy fails at the health check | Open **Logs**: a `Fix these settings first` line names the missing setting |
+| Domain shows a Cloudflare error 52x | Set the CNAME to DNS only until Render has verified the domain, and SSL/TLS to Full |
 | `self-signed certificate in certificate chain` | Remove `sslmode=` from the address and `DATABASE_SSL_CA`, or give the correct Supabase certificate |
 | The sign-in page says "Sign in with Manus" | `AUTH_MODE=local` is missing |
 | Everyone is signed out after a restart | `JWT_SECRET` changed; keep it fixed |
