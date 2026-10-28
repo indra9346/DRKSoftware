@@ -1,4 +1,4 @@
-// Vercel function: api/index.mjs re-exports this (built to dist/vercel.js). Vercel serves the
+// Vercel function: api/index.js re-exports this (built to dist/vercel.js). Vercel serves the
 // screens from dist/public; vercel.json sends /api/* and /iclock/* here. The app is built
 // once per function instance; in demo mode that includes filling the sample data.
 import type { IncomingMessage, ServerResponse } from "http";
